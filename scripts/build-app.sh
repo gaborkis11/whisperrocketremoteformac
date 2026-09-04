@@ -38,6 +38,16 @@ cp "$BUILD_DIR/WhisperRocketRemote" "$CONTENTS/MacOS/WhisperRocketRemote"
 cp "$ROOT/Support/Info.plist" "$CONTENTS/Info.plist"
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 
+# The app icon, named by CFBundleIconFile in Info.plist. Regenerate it with
+# scripts/make-icons.sh when the artwork changes; a missing icns is not fatal
+# (the app runs with the generic one), so this only warns.
+if [ -f "$ROOT/AssetsSource/AppIcon.icns" ]; then
+	cp "$ROOT/AssetsSource/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
+	echo "    app icon: AppIcon.icns"
+else
+	echo "!! no AssetsSource/AppIcon.icns — run scripts/make-icons.sh" >&2
+fi
+
 shopt -s nullglob
 bundles=("$BUILD_DIR"/*.bundle)
 shopt -u nullglob

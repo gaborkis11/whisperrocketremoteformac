@@ -1,0 +1,110 @@
+/* WhisperRocket Remote — magyar.
+   A kulcsok sorrendje megegyezik a Sources/WhisperRocketRemote/UI/L.swift-tel. */
+
+/* MARK: Menüsor-ikon */
+"statusItem.accessibility" = "WhisperRocket Remote";
+"statusItem.accessibility.failed" = "WhisperRocket Remote — egy felvétel elakadt";
+
+/* MARK: Panel */
+"app.name" = "WhisperRocket";
+"status.idle" = "Készen áll";
+"status.recording" = "Felvétel";
+"status.sending" = "Küldés";
+"status.done" = "Megvan";
+"status.failed" = "Nem sikerült";
+
+/* MARK: Alaphelyzet */
+"idle.hint.shortcut" = "Diktálás: %@";
+"idle.hint.noShortcut" = "Állíts be gyorsbillentyűt, és bárhonnan diktálhatsz";
+"action.startRecording" = "Felvétel indítása";
+"action.stopRecording" = "Leállítás";
+
+/* MARK: Felvétel */
+"recording.hint" = "A leállításhoz nyomd meg újra a gyorsbillentyűt";
+"storedMode.title" = "A host nem érhető el — tárolt mód";
+"storedMode.detail" = "Nyugodtan beszélj tovább. A felvétel megmarad, és később elküldheted.";
+"countdown.autoStop" = "%d mp múlva automatikusan leáll";
+
+/* MARK: Küldés */
+"sending.title" = "Küldés a hostnak…";
+"sending.attempt" = "%1$d. próbálkozás a %2$d-ből";
+
+/* MARK: Kész */
+"done.typed" = "Beírva";
+"done.clipboard" = "Vágólapra másolva";
+"done.composed" = "Fogalmazott válasz";
+"done.characters" = "%d karakter";
+"done.reason.autoPasteOff" = "Az automatikus beírás ki van kapcsolva, ezért csak a vágólapra került.";
+"done.reason.accessibility" = "Nincs Kisegítő lehetőségek engedély, ezért csak a vágólapra került.";
+"done.reason.focus" = "Közben átváltottál ide: %@ — ezért nem írtam be sehová.";
+"done.reason.focus.unknown" = "Közben elmozdult a fókusz, ezért nem írtam be sehová.";
+
+/* MARK: Hiba */
+"failed.hostSaid" = "A host üzenete:";
+"failed.kept" = "A felvétel megvan — újra elküldheted.";
+
+"error.title.generic" = "Nem sikerült";
+"error.title.token" = "Nem jó a token";
+"error.title.noSpeech" = "Nem volt benne beszéd";
+"error.title.unreachable" = "Nem érem el a hostot";
+"error.title.tooLarge" = "Túl nagy a felvétel";
+"error.title.busy" = "A host éppen foglalt";
+"error.title.loading" = "A modell még töltődik";
+"error.title.notConfigured" = "Még nincs beállítva host";
+
+"error.detail.badRequest" = "A host elutasította a kérést (400).";
+"error.detail.unauthorized" = "A host nem fogadta el a tokent (401). Nézd meg a beállításokban.";
+"error.detail.notFound" = "Ezen a címen nincs /dictate végpont (404).";
+"error.detail.payloadTooLarge" = "A hang nagyobb a host 25 MB-os határánál (413).";
+"error.detail.unprocessable" = "A host feldolgozta a hangot, de nem talált benne leírnivalót (422).";
+"error.detail.rateLimited" = "A host éppen egy másik diktálással foglalkozik (429).";
+"error.detail.serverError" = "A host hibára futott átirat közben (500).";
+"error.detail.serviceUnavailable" = "A host fut, de a modell még nem áll készen (503).";
+"error.detail.unexpectedStatus" = "A host váratlan státusszal válaszolt (%d).";
+"error.detail.timedOut" = "A host nem válaszolt időben.";
+"error.detail.cannotConnect" = "Erről a címről nincs válasz. Fut a host?";
+"error.detail.cancelled" = "A küldés megszakadt.";
+"error.detail.audioUnreadable" = "A hangfájl nem olvasható: %@";
+"error.detail.transport" = "Hálózati hiba: %@";
+"error.detail.notConfigured" = "Nyisd meg a beállításokat, és töltsd ki a host címét meg a tokent.";
+"error.detail.captureFailed" = "Maga a felvétel hiúsult meg: %@";
+
+/* MARK: Felvétel-lista */
+"recordings.title" = "Felvételek";
+"recording.status.pending" = "Várakozik";
+"recording.status.sending" = "Küldés";
+"recording.status.sent" = "Elküldve";
+"recording.status.failed" = "Elakadt";
+"recording.resend" = "Újraküldés";
+"recording.attempt" = "%1$d/%2$d";
+
+/* MARK: Lábléc */
+"action.settings" = "Beállítások…";
+"action.quit" = "Kilépés";
+
+/* MARK: Beállítások */
+"settings.window.title" = "WhisperRocket Remote beállítások";
+"settings.section.general" = "Általános";
+"settings.section.dictation" = "Diktálás";
+"settings.section.host" = "Host";
+"settings.launchAtLogin" = "Indítás bejelentkezéskor";
+"settings.launchAtLogin.unavailable" = "Akkor állítható, ha az app az Alkalmazások mappából fut.";
+"settings.hotkey" = "Gyorsbillentyű";
+"settings.hotkey.needsCommand" = "A diktálás gyorsbillentyűjében kell lennie Commandnak — nélküle a billentyűk egyszerűen beleírnának abba az appba, amiben épp vagy.";
+"settings.microphone" = "Mikrofon";
+"settings.microphone.systemDefault" = "Rendszer alapértelmezett";
+"settings.microphone.missing" = "A mentett mikrofon nincs csatlakoztatva — a rendszer alapértelmezettjéről veszek fel.";
+"settings.host.address" = "Cím";
+"settings.host.port" = "Port";
+"settings.host.token" = "Token";
+"settings.host.token.hint" = "A Keychainben tárolom, nem a beállítások közt.";
+"settings.host.token.stored" = "Van eltárolt token — írj be újat a cseréjéhez";
+"settings.host.token.empty" = "Illeszd be a host tokenjét";
+"settings.host.token.failed" = "A tokent nem sikerült a Keychainbe menteni: %@";
+"settings.host.invalid" = "Ez nem gépnév és nem is IP-cím.";
+"settings.host.portInvalid" = "A port 1 és 65535 közé essen.";
+"settings.autoPaste" = "Szöveg automatikus beírása";
+"settings.autoPaste.hint" = "A szöveg mindig a vágólapra kerül; ez ⌘V-vel be is illeszti.";
+"settings.autoPaste.needsPermission" = "Ehhez Kisegítő lehetőségek engedély kell.";
+"settings.autoPaste.grant" = "Engedély megadása…";
+"settings.sounds" = "Hangjelzés induláskor és leálláskor";
