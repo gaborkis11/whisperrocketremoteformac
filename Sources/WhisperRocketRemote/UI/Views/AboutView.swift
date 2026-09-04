@@ -18,7 +18,7 @@ struct AboutView: View {
     private static let windowWidth: Double = 340
     private static let iconSize: Double = 64
 
-    private static let repository = URL(string: "https://github.com/gaborkis11/WhisperRocket")!
+    private static let repository = URL(string: "https://github.com/gaborkis11/whisperrocketremoteformac")!
 
     @Environment(\.openURL) private var openURL
 

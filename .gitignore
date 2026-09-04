@@ -1,3 +1,7 @@
 .build/
 dist/
 .DS_Store
+
+# Helyi Claude Code fájlok — nem kerülnek a repóba
+CLAUDE.md
+.claude/
