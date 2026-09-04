@@ -69,6 +69,15 @@
 "error.detail.notConfigured" = "Open Settings and fill in the host address and the token.";
 "error.detail.captureFailed" = "The recording itself failed: %@";
 
+/* MARK: Capsule (the live HUD under the menu-bar icon) */
+"capsule.accessibility" = "Dictation";
+"capsule.cancelHint" = "Press Escape to cancel without sending";
+"capsule.recording.title" = "Listening…";
+"capsule.done.pasteHint" = "⌘V anywhere";
+"capsule.failed.subtitle" = "Kept — you can send it again";
+"capsule.cancelled.title" = "Cancelled";
+"capsule.cancelled.subtitle" = "Nothing was sent";
+
 /* MARK: Recording list */
 "recordings.title" = "Recordings";
 "recording.status.pending" = "Waiting";

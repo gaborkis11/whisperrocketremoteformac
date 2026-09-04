@@ -49,6 +49,13 @@ protocol PanelModelProviding: AnyObject, Observable {
     /// Set while ``phase`` is `.failed`.
     var problem: DictationProblem? { get }
 
+    /// What the capsule's retry button would re-send, or `nil` when there is
+    /// nothing worth re-sending — which is what hides the button. "Nothing
+    /// worth" is the failure's own verdict: a 401 or a recording with no speech
+    /// in it would fail again the same way, and offering a button that cannot
+    /// work is worse than offering none.
+    var failedRecordingID: UUID? { get }
+
     /// The current hotkey as a human-readable string ("⌘⇧Space"), or `nil` when
     /// none is set. Shown in the idle hint.
     var shortcutDescription: String? { get }
@@ -57,6 +64,11 @@ protocol PanelModelProviding: AnyObject, Observable {
     func toggleRecording()
     /// Re-upload a `pending` or `failed` entry.
     func resend(_ recordingID: UUID)
+    /// Abandon the recording in progress: nothing is uploaded, and the audio
+    /// stays on disk as a `pending` entry the user can send later. This is what
+    /// Escape does, and it is deliberately *not* `toggleRecording()` — the two
+    /// differ in exactly the thing that matters, whether anything is sent.
+    func cancelRecording()
 }
 
 // Opening the settings window and quitting are deliberately *not* here. They

@@ -10,12 +10,21 @@ import SwiftUI
 struct CruiseSceneView: View {
     /// Seconds into the flight.
     var time: Double
+    /// The most the rocket motif may be blown up. The default is the panel's;
+    /// the capsule's shorter band would otherwise let the rocket grow into it.
+    var rocketScaleCap: Double = PanelMetrics.cruiseRocketScale
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Canvas(opaque: false, rendersAsynchronously: false) { context, size in
-            CruiseSceneRenderer.draw(&context, size: size, time: time, scheme: colorScheme)
+            CruiseSceneRenderer.draw(
+                &context,
+                size: size,
+                time: time,
+                scheme: colorScheme,
+                rocketScaleCap: rocketScaleCap
+            )
         }
         // The picture says nothing VoiceOver can use that the status line below
         // it does not already say better.

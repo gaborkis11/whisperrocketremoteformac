@@ -111,6 +111,16 @@ nonisolated enum L {
     static var errorNotConfigured: String { t("error.detail.notConfigured") }
     static func errorCaptureFailed(_ detail: String) -> String { t("error.detail.captureFailed", detail) }
 
+    // MARK: - Capsule
+
+    static var capsuleAccessibility: String { t("capsule.accessibility") }
+    static var capsuleCancelHint: String { t("capsule.cancelHint") }
+    static var capsuleListening: String { t("capsule.recording.title") }
+    static var capsulePasteHint: String { t("capsule.done.pasteHint") }
+    static var capsuleFailedSubtitle: String { t("capsule.failed.subtitle") }
+    static var capsuleCancelledTitle: String { t("capsule.cancelled.title") }
+    static var capsuleCancelledSubtitle: String { t("capsule.cancelled.subtitle") }
+
     // MARK: - Recording list
 
     static var recordingsTitle: String { t("recordings.title") }

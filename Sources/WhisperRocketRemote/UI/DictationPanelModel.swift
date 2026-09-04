@@ -68,6 +68,12 @@ final class DictationPanelModel: PanelModelProviding {
         return Self.problem(from: failure)
     }
 
+    var failedRecordingID: UUID? {
+        // `problem` already carries the phase guard and the retry verdict.
+        guard let problem, problem.isRetryable else { return nil }
+        return controller.lastFailure?.recordingID
+    }
+
     var shortcutDescription: String? {
         KeyboardShortcuts.getShortcut(for: .toggleDictation)?.description
     }
@@ -78,6 +84,10 @@ final class DictationPanelModel: PanelModelProviding {
 
     func resend(_ recordingID: UUID) {
         controller.resend(id: recordingID)
+    }
+
+    func cancelRecording() {
+        controller.cancelRecording()
     }
 
     // MARK: - Translations

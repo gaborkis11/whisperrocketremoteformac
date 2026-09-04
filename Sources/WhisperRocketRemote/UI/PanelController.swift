@@ -20,8 +20,7 @@ final class PanelController {
     private let effectView: NSVisualEffectView
     private let contentView: NSView
 
-    private var globalMonitor: Any?
-    private var localMonitor: Any?
+    private let outsideClicks = OutsideClickMonitor()
     private var autoCloseTask: Task<Void, Never>?
 
     /// While true, a click outside does not close the panel — something is
@@ -101,15 +100,17 @@ final class PanelController {
         if let button { anchorButton = button }
         cancelAutoClose()
         layoutContent()
-        panel.setFrameOrigin(origin(below: anchorButton, size: panel.frame.size))
+        panel.setFrameOrigin(PanelAnchor.origin(below: anchorButton, size: panel.frame.size))
         // Not `makeKeyAndOrderFront`: the focused app must keep its focus.
         panel.orderFrontRegardless()
-        startMonitoringOutsideClicks()
+        outsideClicks.start(ignoring: panel) { [weak self] location in
+            self?.handleOutsideClick(at: location)
+        }
     }
 
     func hide() {
         cancelAutoClose()
-        stopMonitoringOutsideClicks()
+        outsideClicks.stop()
         panel.orderOut(nil)
     }
 
@@ -155,29 +156,6 @@ final class PanelController {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
-    // MARK: - Position
-
-    /// Centred under the status item, nudged back onto the screen if that would
-    /// hang it off an edge.
-    private func origin(below button: NSStatusBarButton?, size: NSSize) -> NSPoint {
-        guard let button, let window = button.window else {
-            // No anchor yet (the status item has not been laid out). Better a
-            // sane corner than a panel at the origin of the screen.
-            let visible = NSScreen.main?.visibleFrame ?? .zero
-            return NSPoint(x: visible.maxX - size.width - 12, y: visible.maxY - size.height - 12)
-        }
-
-        let buttonInScreen = window.convertToScreen(button.convert(button.bounds, to: nil))
-        var x = buttonInScreen.midX - size.width / 2
-        let y = buttonInScreen.minY - size.height - 6
-
-        let visible = (window.screen ?? NSScreen.main)?.visibleFrame
-        if let visible {
-            x = min(max(x, visible.minX + 8), visible.maxX - size.width - 8)
-        }
-        return NSPoint(x: x, y: y)
-    }
-
     // MARK: - Auto-close
 
     /// Used for the acknowledgement only: long enough to read, short enough to
@@ -198,46 +176,9 @@ final class PanelController {
 
     // MARK: - Outside clicks
 
-    private func startMonitoringOutsideClicks() {
-        guard globalMonitor == nil, localMonitor == nil else { return }
-        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-
-        // Global: clicks in other apps. Mouse events need no Accessibility
-        // permission (key events would).
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
-            MainActor.assumeIsolated {
-                self?.handleOutsideClick(at: NSEvent.mouseLocation)
-            }
-        }
-
-        // Local: clicks in our own other windows (the settings window).
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
-            MainActor.assumeIsolated {
-                if let self, event.window !== self.panel {
-                    self.handleOutsideClick(at: NSEvent.mouseLocation)
-                }
-            }
-            return event
-        }
-    }
-
-    private func stopMonitoringOutsideClicks() {
-        if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
-        if let localMonitor { NSEvent.removeMonitor(localMonitor) }
-        globalMonitor = nil
-        localMonitor = nil
-    }
-
     private func handleOutsideClick(at location: NSPoint) {
         guard panel.isVisible, !isPinnedOpen else { return }
-        // A click on the status item is not "outside": letting it close here
-        // would make the button's own toggle reopen the panel a moment later.
-        if let anchorButton, let window = anchorButton.window {
-            let buttonInScreen = window.convertToScreen(
-                anchorButton.convert(anchorButton.bounds, to: nil)
-            )
-            if buttonInScreen.contains(location) { return }
-        }
+        guard !PanelAnchor.contains(location, in: anchorButton) else { return }
         hide()
     }
 }

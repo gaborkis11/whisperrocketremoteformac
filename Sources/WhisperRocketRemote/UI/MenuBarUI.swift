@@ -29,7 +29,17 @@ final class MenuBarUI {
     private let panelModel: any PanelModelProviding
     private let statusItem: StatusItemController
     private let panelController: PanelController
+    private let capsuleController: CapsulePanelController
     private let settingsWindow: SettingsWindowController
+
+    /// Raised by Escape, lowered when the capsule has finished fading. The
+    /// capsule reads it as one more stage; nothing else in the app knows a
+    /// cancellation looks different from any other return to idle.
+    private let cancelFlash: CapsuleCancelFlash
+    private var cancelFlashTask: Task<Void, Never>?
+
+    /// Armed only while the microphone is open — see ``EscapeCancelMonitor``.
+    private let escapeMonitor = EscapeCancelMonitor()
 
     /// Re-armed after every notification: `withObservationTracking` fires once.
     private var observationTask: Task<Void, Never>?
@@ -80,10 +90,26 @@ final class MenuBarUI {
         panelController = PanelController(contentView: hosting)
         controllerBox.controller = panelController
 
+        // The capsule: the live display, and the only one the hotkey opens.
+        // Built here in the generic `init` for the same reason the panel is —
+        // the concrete model type has to reach the view, and this class must
+        // not become generic.
+        let cancelFlash = CapsuleCancelFlash()
+        self.cancelFlash = cancelFlash
+        capsuleController = CapsulePanelController(
+            contentView: NSHostingView(
+                rootView: CapsuleView(model: panelModel, flash: cancelFlash)
+            )
+        )
+
         // The status item hands its own button to the callback, so the panel
         // can be positioned under it without this object having to exist yet.
         let panelController = self.panelController
-        statusItem = StatusItemController { [weak panelController] button in
+        let capsuleController = self.capsuleController
+        statusItem = StatusItemController { [weak panelController, weak capsuleController] button in
+            // Never both at once: the panel is what a click asks for, so the
+            // capsule gets out of its way.
+            capsuleController?.hide()
             panelController?.toggle(below: button)
         }
 
@@ -95,6 +121,11 @@ final class MenuBarUI {
 
     func showPanel() {
         panelController.show(below: statusItem.button)
+    }
+
+    /// Only the probes open the capsule by hand; a person gets it by dictating.
+    func showCapsule() {
+        capsuleController.show(below: statusItem.button)
     }
 
     func showSettings() {
@@ -116,6 +147,14 @@ final class MenuBarUI {
     /// it needs no Screen Recording permission.
     func capturePanel() -> NSBitmapImageRep? {
         panelController.capture()
+    }
+
+    /// The capsule's screen rectangle, and its live pixels, for the probes.
+    var capsuleFrameInScreen: NSRect { capsuleController.frameInScreen }
+    var isCapsuleVisible: Bool { capsuleController.isVisible }
+
+    func captureCapsule() -> NSBitmapImageRep? {
+        capsuleController.capture()
     }
 
     func captureSettings() -> NSBitmapImageRep? {
@@ -142,6 +181,10 @@ final class MenuBarUI {
                 : NSColor(srgbRed: 0.93, green: 0.93, blue: 0.94, alpha: 1)
         )
     }
+
+    /// Whether the Escape listener is armed right now, for the probe log. It
+    /// should be true during a recording and false at every other moment.
+    var isEscapeArmed: Bool { escapeMonitor.isListening }
 
     /// What the status item is showing, in words, for the probe log.
     var statusItemDescription: String {
@@ -198,18 +241,89 @@ final class MenuBarUI {
         // is still running.
         panelController.isPinnedOpen = phase.holdsPanelOpen
 
-        guard !force else { return }
-
-        // Starting a recording from the hotkey has to bring the panel with it —
-        // that is the feedback the whole app exists to provide.
-        if phase == .recording, !panelController.isVisible {
-            panelController.show(below: statusItem.button)
+        // Before the `force` guard, so the invariant holds from the first
+        // moment: Escape is registered *if and only if* a recording is running.
+        // A registered Carbon hotkey swallows the key system-wide, and outside a
+        // recording that would break Escape everywhere else on the Mac.
+        if phase == .recording {
+            escapeMonitor.start { [weak self] in self?.cancel() }
+        } else {
+            escapeMonitor.stop()
         }
 
+        guard !force else { return }
+
+        // The panel no longer opens itself when a recording starts — the
+        // capsule does that now. It keeps every other habit it had, including
+        // getting out of the way after an acknowledgement, for the case where
+        // it was already open when the dictation began.
         if phase.dismissesItself {
             panelController.scheduleAutoClose(after: PanelMetrics.doneDismissDelay)
         } else {
             panelController.cancelAutoClose()
+        }
+
+        applyCapsuleStage(for: phase)
+    }
+
+    // MARK: - The capsule
+
+    private func applyCapsuleStage(for phase: DictationPhase) {
+        // A new recording started inside the cancelled flash's fade — pressing
+        // the hotkey again straight after Escape is a perfectly reasonable
+        // thing to do, and it must not be answered with "Cancelled".
+        if phase == .recording, cancelFlash.isShowing {
+            cancelFlashTask?.cancel()
+            cancelFlash.lower()
+        }
+
+        let stage = CapsuleStage(phase: phase, showingCancelled: cancelFlash.isShowing)
+        capsuleController.isPinnedOpen = stage?.holdsOpen ?? false
+
+        switch stage {
+        case .recording:
+            // Starting a recording from the hotkey has to bring *something*
+            // with it — that is the feedback the whole app exists to provide.
+            // Unless the big panel is already open: two windows saying the same
+            // thing at once is one too many.
+            if !panelController.isVisible {
+                capsuleController.show(below: statusItem.button)
+            }
+
+        case .sending, .failed:
+            capsuleController.cancelAutoClose()
+
+        case .done:
+            capsuleController.scheduleAutoClose(
+                after: CapsuleMetrics.doneDismissDelay,
+                fadingOver: CapsuleMetrics.doneFade
+            )
+
+        case .cancelled:
+            // The fade is already running — `cancel()` started it the moment
+            // Escape was pressed.
+            break
+
+        case nil:
+            capsuleController.hide()
+        }
+    }
+
+    /// Escape, mid-recording: nothing is uploaded, the audio stays on disk as a
+    /// pending entry, and the capsule says so on its way out.
+    func cancel() {
+        guard panelModel.phase == .recording else { return }
+        cancelFlash.raise()
+        panelModel.cancelRecording()
+
+        capsuleController.cancelAutoClose()
+        capsuleController.hide(fadingOver: CapsuleMetrics.cancelFade)
+
+        cancelFlashTask?.cancel()
+        cancelFlashTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(CapsuleMetrics.cancelFade))
+            guard let self, !Task.isCancelled else { return }
+            cancelFlash.lower()
         }
     }
 }

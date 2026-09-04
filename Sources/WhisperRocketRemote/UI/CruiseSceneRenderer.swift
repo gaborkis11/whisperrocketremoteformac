@@ -16,11 +16,12 @@ nonisolated enum CruiseSceneRenderer {
         _ context: inout GraphicsContext,
         size: CGSize,
         time: Double,
-        scheme: ColorScheme
+        scheme: ColorScheme,
+        rocketScaleCap: Double = PanelMetrics.cruiseRocketScale
     ) {
         guard size.width > 0, size.height > 0 else { return }
         drawStars(&context, size: size, time: time, scheme: scheme)
-        drawRocket(&context, size: size, time: time, scheme: scheme)
+        drawRocket(&context, size: size, time: time, scheme: scheme, scaleCap: rocketScaleCap)
     }
 
     // MARK: - The field
@@ -52,12 +53,13 @@ nonisolated enum CruiseSceneRenderer {
         _ context: inout GraphicsContext,
         size: CGSize,
         time: Double,
-        scheme: ColorScheme
+        scheme: ColorScheme,
+        scaleCap: Double
     ) {
         // Upstream parks the rocket a touch right of centre so the flame has
         // somewhere to be; `width / 2 + 15` of 350 is this fraction.
         let scale = min(
-            PanelMetrics.cruiseRocketScale,
+            scaleCap,
             (size.height - 6) / CruiseRocketGeometry.height
         )
         guard scale > 0 else { return }

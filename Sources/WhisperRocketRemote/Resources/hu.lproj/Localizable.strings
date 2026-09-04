@@ -69,6 +69,15 @@
 "error.detail.notConfigured" = "Nyisd meg a beállításokat, és töltsd ki a host címét meg a tokent.";
 "error.detail.captureFailed" = "Maga a felvétel hiúsult meg: %@";
 
+/* MARK: Kapszula (az élő kijelző a menüsor-ikon alatt) */
+"capsule.accessibility" = "Diktálás";
+"capsule.cancelHint" = "Az Esc megszakítja, küldés nélkül";
+"capsule.recording.title" = "Hallgatlak…";
+"capsule.done.pasteHint" = "⌘V bárhol";
+"capsule.failed.subtitle" = "Megvan — újraküldheted";
+"capsule.cancelled.title" = "Megszakítva";
+"capsule.cancelled.subtitle" = "Semmi nem ment el";
+
 /* MARK: Felvétel-lista */
 "recordings.title" = "Felvételek";
 "recording.status.pending" = "Várakozik";

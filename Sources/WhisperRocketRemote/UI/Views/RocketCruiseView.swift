@@ -16,6 +16,10 @@ struct RocketCruiseView: View {
     var reduceMotion: Bool
     /// Set only by `--anim-probe`, to photograph a chosen frame. `nil` in the app.
     var frozen: CruiseInstant?
+    /// The band the scene gets. The panel's is the default; the capsule is
+    /// shorter and passes its own.
+    var height: Double = PanelMetrics.cruiseSceneHeight
+    var rocketScaleCap: Double = PanelMetrics.cruiseRocketScale
 
     /// The flight's own zero. `@State`, so it is set when this view appears and
     /// the animation starts at the beginning of a send rather than partway
@@ -25,7 +29,7 @@ struct RocketCruiseView: View {
     var body: some View {
         Group {
             if let still = stillTime {
-                CruiseSceneView(time: still)
+                CruiseSceneView(time: still, rocketScaleCap: rocketScaleCap)
             } else {
                 // `.animation` follows the display rather than being capped to
                 // upstream's 60 Hz. Capping was measured — 6.4 % of one core
@@ -35,12 +39,15 @@ struct RocketCruiseView: View {
                 // shows off. Only the *flame* stays quantised to 60 Hz, because
                 // there its stutter is the point.
                 TimelineView(.animation) { context in
-                    CruiseSceneView(time: context.date.timeIntervalSince(epoch))
+                    CruiseSceneView(
+                        time: context.date.timeIntervalSince(epoch),
+                        rocketScaleCap: rocketScaleCap
+                    )
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: PanelMetrics.cruiseSceneHeight)
+        .frame(height: height)
     }
 
     /// The instant to hold, or `nil` to let the clock run.

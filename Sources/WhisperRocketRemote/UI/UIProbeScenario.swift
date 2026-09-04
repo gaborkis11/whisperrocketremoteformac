@@ -23,6 +23,9 @@ nonisolated enum UIProbeScenario: String, CaseIterable, Sendable {
     case clipboardOnly = "clipboard-only"
     /// A host failure with the host's own message, and the panel staying open.
     case failed
+    /// Escape mid-recording: the capsule says so and fades, nothing is sent,
+    /// the audio stays pending. Capsule-only — the panel has no such stage.
+    case cancelled
     /// Idle, with a full ring including a failed entry (so the menu-bar badge
     /// is on).
     case idle

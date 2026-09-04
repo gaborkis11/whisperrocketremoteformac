@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import KeyboardShortcuts
 import SwiftUI
 import WRCore
@@ -19,11 +20,19 @@ import WRCore
 ///   show that a 60 fps animation actually animates without recording the
 ///   screen. It works because the whole scene is a pure function of a clock
 ///   (see ``CruiseInstant``), so a frame can be asked for by name.
+/// * `--capsule-probe [directory]` writes every stage of the capsule HUD, over
+///   a light and over a dark backdrop — the pill is always dark, so what the two
+///   backdrops test is how it sits on top of what the user is actually looking
+///   at.
 /// * `--icon-probe [directory]` renders the menu-bar rocket to PNG contact
 ///   sheets — idle, recording and badged, on a light and on a dark menu bar, at
 ///   1× through 8× — because an 18-point glyph cannot be judged any other way.
 /// * `--l10n-probe` proves the `.lproj` bundles survived SwiftPM's `.process`
 ///   flattening and that both languages resolve every key.
+/// * `--escape-probe` asks macOS whether the bare Escape key can be registered
+///   as a global hotkey at all — the one thing Escape-to-cancel depends on that
+///   fails silently. Run it against a *second* copy of this app that is holding
+///   Escape and it answers `-9878`, which is how the arming is proved end to end.
 /// * `--show-panel` is the odd one out: it opens the panel against the **real**
 ///   controller (see ``openPanelIfRequested(_:arguments:)``).
 ///
@@ -63,6 +72,9 @@ enum UIProbes {
         if arguments.contains("--l10n-probe") {
             exit(runLocalizationProbe())
         }
+        if arguments.contains("--escape-probe") {
+            exit(runEscapeProbe())
+        }
         if let index = arguments.firstIndex(of: "--render-probe") {
             let directory = arguments.dropFirst(index + 1).first
             exit(runRenderProbe(directory: directory))
@@ -70,6 +82,10 @@ enum UIProbes {
         if let index = arguments.firstIndex(of: "--anim-probe") {
             let directory = arguments.dropFirst(index + 1).first
             exit(runAnimationProbe(directory: directory))
+        }
+        if let index = arguments.firstIndex(of: "--capsule-probe") {
+            let directory = arguments.dropFirst(index + 1).first
+            exit(runCapsuleProbe(directory: directory))
         }
         guard let index = arguments.firstIndex(of: "--ui-probe") else { return false }
 
@@ -220,12 +236,45 @@ enum UIProbes {
             // before then, so the probe waits exactly as the real app waits for
             // a user's click.
             try? await Task.sleep(for: .milliseconds(700))
-            ui.showPanel()
+            // The panel is deliberately *not* opened: the capsule is what a
+            // recording brings up now, and a probe that opened the panel first
+            // would suppress the very thing it is meant to show (the two never
+            // appear at once). Click the rocket to see the panel.
             panelModel.play(scenario)
-            try? await Task.sleep(for: .milliseconds(400))
-            let frame = ui.panelFrameInScreen
-            log("ui-probe", "panel visible at \(Int(frame.minX)),\(Int(frame.minY)) "
-                + "\(Int(frame.width))×\(Int(frame.height))")
+            try? await Task.sleep(for: .milliseconds(500))
+            // Scenarios that start mid-flow (`sending`, `failed`, …) never pass
+            // through `.recording`, which is the only thing that opens the
+            // capsule in the app — a resend must not throw a HUD over the panel
+            // the user just clicked in. The probe opens it by hand so those
+            // stages can still be watched live.
+            if !ui.isCapsuleVisible, scenario != .idle, scenario != .full {
+                ui.showCapsule()
+                try? await Task.sleep(for: .milliseconds(200))
+                log("ui-probe", "capsule opened by the probe — this scenario never enters .recording")
+            }
+            if ui.isCapsuleVisible {
+                let frame = ui.capsuleFrameInScreen
+                log("ui-probe", "capsule visible at \(Int(frame.minX)),\(Int(frame.minY)) "
+                    + "\(Int(frame.width))×\(Int(frame.height))")
+            } else {
+                log("ui-probe", "no capsule for this scenario — click the rocket for the panel")
+            }
+            // Armed says a task exists; the Carbon status says the task actually
+            // got the key. `eventHotKeyExistsErr` here is the *good* answer.
+            let carbon = takeEscapeHotKey()
+            log("ui-probe", "escape listener armed=\(ui.isEscapeArmed), "
+                + "carbon=\(carbon == OSStatus(eventHotKeyExistsErr) ? "held (eventHotKeyExistsErr)" : "\(carbon)")")
+        }
+
+        // `cancelled` is the one scenario the mock cannot play by itself: what
+        // is worth watching is `MenuBarUI.cancel()`, the exact call Escape
+        // makes, and the flash and fade that follow it.
+        if scenario == .cancelled {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(max(captureAfter - 0.25, 0.5)))
+                log("ui-probe", "cancel() — the Escape path, without a keystroke")
+                ui.cancel()
+            }
         }
 
         if let captureDirectory {
@@ -253,17 +302,30 @@ enum UIProbes {
     ) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        if let rep = ui.capturePanel(),
-           let data = rep.representation(using: .png, properties: [:]) {
-            let url = directory.appendingPathComponent("live-panel-\(scenario.rawValue).png")
-            try? data.write(to: url, options: .atomic)
-            log("ui-probe", "captured \(url.lastPathComponent) (\(rep.pixelsWide)×\(rep.pixelsHigh))")
-        } else {
-            log("ui-probe", "panel capture FAILED")
+        // The capsule first, while it is still the only thing on screen: this is
+        // the live one, mid-animation, which no `ImageRenderer` still can be.
+        if ui.isCapsuleVisible {
+            write(
+                ui.captureCapsule(),
+                to: directory,
+                named: "live-capsule-\(scenario.rawValue).png",
+                tag: "ui-probe"
+            )
         }
 
-        ui.showSettings()
+        // Then the panel, which now only ever opens because someone asked for it.
+        ui.showPanel()
+
         Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            write(
+                ui.capturePanel(),
+                to: directory,
+                named: "live-panel-\(scenario.rawValue).png",
+                tag: "ui-probe"
+            )
+
+            ui.showSettings()
             try? await Task.sleep(for: .milliseconds(600))
             guard let rep = ui.captureSettings(),
                   let data = rep.representation(using: .png, properties: [:])
@@ -381,7 +443,9 @@ enum UIProbes {
         let settingsModel = MockSettingsModel()
         var failures = 0
 
-        for scenario in UIProbeScenario.allCases where scenario != .full {
+        // `.cancelled` is left out with `.full`: it is a *capsule* state, and
+        // what the panel does with it is by definition `panel-idle`.
+        for scenario in UIProbeScenario.allCases where scenario != .full && scenario != .cancelled {
             model.snapshot(scenario)
             for isDark in [false, true] {
                 let name = "panel-\(scenario.rawValue)-\(isDark ? "dark" : "light").png"
@@ -550,6 +614,142 @@ enum UIProbes {
         log("anim-probe", failures == 0 ? "PASS — \(base.path)" : "FAIL (\(failures) render(s))")
         return failures == 0 ? 0 : 1
     }
+
+    // MARK: - --capsule-probe
+
+    /// Renders every stage of the capsule HUD, over a light and over a dark
+    /// backdrop.
+    ///
+    /// The capsule is always dark, so the two backdrops are not a light/dark
+    /// test of the pill — they are a test of the pill *against* the two kinds of
+    /// thing it hangs over. What the light one has to prove is that a nearly
+    /// black slab does not look like a hole punched in a white document; what
+    /// the dark one has to prove is that the border and the top lip are still
+    /// there when there is almost no contrast to carry them.
+    ///
+    /// The waveform is frozen: a still cannot wait for a ring to fill itself in,
+    /// and a snapshot of an empty one would show a flat line under a stage
+    /// called "listening".
+    private static func runCapsuleProbe(directory: String?) -> Int32 {
+        let base = URL(fileURLWithPath: directory ?? FileManager.default.currentDirectoryPath)
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+
+        let model = MockPanelModel(seedRecordings: false)
+        let flash = CapsuleCancelFlash()
+        let waveform = syntheticWaveform()
+
+        let stills: [(name: String, scenario: UIProbeScenario, stage: CapsuleStage)] = [
+            ("recording", .recording, .recording),
+            ("recording-stored", .storedMode, .recording),
+            ("recording-countdown", .countdown, .recording),
+            ("sending", .sending, .sending),
+            ("done-typed", .done, .done),
+            ("done-clipboard", .clipboardOnly, .done),
+            ("failed", .failed, .failed),
+            ("cancelled", .cancelled, .cancelled),
+        ]
+
+        var failures = 0
+        for still in stills {
+            model.snapshot(still.scenario)
+            for isDark in [false, true] {
+                let file = "capsule-\(still.name)-\(isDark ? "dark" : "light").png"
+                let view = CapsuleView(
+                    model: model,
+                    flash: flash,
+                    frozenStage: still.stage,
+                    frozenHistory: waveform
+                )
+                if write(view, to: base.appendingPathComponent(file), isDark: isDark) {
+                    log("capsule-probe", "wrote \(file)")
+                } else {
+                    log("capsule-probe", "FAILED to render \(file)")
+                    failures += 1
+                }
+            }
+        }
+
+        log("capsule-probe", "pill \(Int(CapsuleMetrics.width))×\(Int(CapsuleMetrics.height)), "
+            + "radius \(Int(CapsuleMetrics.cornerRadius)), disc \(Int(CapsuleMetrics.discSize)), "
+            + "button \(Int(CapsuleMetrics.buttonSize)), "
+            + "text column \(Int(CapsuleMetrics.textColumnWidth))")
+        log("capsule-probe", failures == 0 ? "PASS — \(base.path)" : "FAIL (\(failures) render(s))")
+        return failures == 0 ? 0 : 1
+    }
+
+    /// The mock meter's own speech envelope, run forward at the capsule's 20 Hz
+    /// sampling rate, so a still shows the shape a voice actually makes rather
+    /// than a sine wave.
+    private static func syntheticWaveform() -> WaveformHistory {
+        var history = WaveformHistory()
+        var level = 0.0
+        let dt = 1.0 / 20.0
+        // Three times round the ring, so every slot holds a settled value.
+        for step in 0..<(history.capacity * 3) {
+            let time = Double(step) * dt
+            let syllable = 0.5 + 0.5 * sin(time * 11)
+            let phrase = 0.5 + 0.5 * sin(time * 0.7 + 1.1)
+            let breath = phrase < 0.12 ? 0.0 : 1.0
+            let target = min(1, max(0, 0.22 + 0.7 * syllable * phrase * breath))
+            let tau = target > level ? 0.03 : 0.25
+            level += (target - level) * (1 - exp(-dt / tau))
+            history.push(level)
+        }
+        return history
+    }
+
+    // MARK: - --escape-probe
+
+    /// The one thing about Escape-to-cancel that cannot be reasoned about:
+    /// whether macOS will let this process take the bare Escape key as a global
+    /// hotkey. `KeyboardShortcuts` registers through the same Carbon call but
+    /// keeps the result private, and its failure is silent.
+    ///
+    /// Run on its own — before anything else is installed — a `noErr` says the
+    /// registration this feature depends on works here. Run *while the Escape
+    /// listener is armed* (which is what `--ui-probe` does), the same call is
+    /// expected to come back `eventHotKeyExistsErr`, and that is the proof the
+    /// listener really reached Carbon rather than merely starting a task.
+    ///
+    /// It cannot answer "does another app hold Escape": Carbon's uniqueness
+    /// check is per event-dispatcher target, so two processes can each hold the
+    /// same combination. That question stays a live-test question.
+    private static func runEscapeProbe() -> Int32 {
+        let status = takeEscapeHotKey()
+        if status == noErr {
+            log("escape-probe", "RegisterEventHotKey(kVK_Escape, no modifiers) = noErr — "
+                + "the bare Escape key can be registered by this process")
+            log("escape-probe", "PASS")
+            return 0
+        }
+
+        log("escape-probe", "RegisterEventHotKey(kVK_Escape, no modifiers) = \(status)"
+            + (status == OSStatus(eventHotKeyExistsErr) ? " (eventHotKeyExistsErr)" : ""))
+        log("escape-probe", "FAIL — Escape-to-cancel would be silently dead; "
+            + "fall back to a Name with enable/disable, or the capsule's stop button")
+        return 1
+    }
+
+    /// Registers the bare Escape hotkey and lets it go again, returning what the
+    /// system said. `eventHotKeyExistsErr` means something in *this process*
+    /// already holds it.
+    private static func takeEscapeHotKey() -> OSStatus {
+        var reference: EventHotKeyRef?
+        // 'WRRE', so a stray registration is recognisable in a crash log.
+        let identifier = EventHotKeyID(signature: OSType(0x5752_5245), id: 1)
+        let status = RegisterEventHotKey(
+            UInt32(kVK_Escape),
+            0,
+            identifier,
+            GetEventDispatcherTarget(),
+            0,
+            &reference
+        )
+        if let reference { UnregisterEventHotKey(reference) }
+        return status
+    }
+
+    // MARK: - Shared rendering
 
     private static func write(_ view: some View, to url: URL, isDark: Bool) -> Bool {
         // The backdrop is part of the rendered view, not composited afterwards:

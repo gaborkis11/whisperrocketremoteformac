@@ -31,6 +31,7 @@ final class MockPanelModel: PanelModelProviding {
     private(set) var recordings: [RecordingMeta] = []
     private(set) var summary: DictationSummary?
     private(set) var problem: DictationProblem?
+    private(set) var failedRecordingID: UUID?
     var shortcutDescription: String? = "⌘⇧Space"
 
     var hasFailedRecordings: Bool { recordings.contains { $0.status == .failed } }
@@ -68,6 +69,19 @@ final class MockPanelModel: PanelModelProviding {
         } else {
             startRecording(hostReachable: true, startingFrame: 0)
         }
+    }
+
+    /// Escape: the newest entry stays exactly where it was — `pending`, on disk,
+    /// unsent — and the mock goes quiet. Nothing about this path uploads.
+    func cancelRecording() {
+        guard phase == .recording else { return }
+        stopMeter()
+        if !recordings.isEmpty {
+            recordings[0].durationSeconds = elapsed
+            recordings[0].status = .pending
+        }
+        countdown = nil
+        phase = .idle
     }
 
     func resend(_ recordingID: UUID) {
@@ -142,6 +156,13 @@ final class MockPanelModel: PanelModelProviding {
                 kind: .serviceUnavailable,
                 serverMessage: "model warm-up in progress, try again in ~20s"
             )
+        case .cancelled:
+            // Escape's aftermath: the phase is back to idle and the audio is
+            // still pending. Only the capsule draws anything for this — the
+            // panel has no cancelled stage and never will.
+            phase = .idle
+            level = 0
+            peak = 0
         case .idle, .full:
             phase = .idle
         }
@@ -150,6 +171,7 @@ final class MockPanelModel: PanelModelProviding {
         // images is the thing being compared.
         recordings = Self.seededRing()
         if phase == .sending { recordings[0].status = .sending }
+        failedRecordingID = problem?.isRetryable == true ? recordings.first?.id : nil
     }
 
     func stop() {
@@ -209,6 +231,14 @@ final class MockPanelModel: PanelModelProviding {
             )
             beginSending(attempts: 3, resolveAfter: .milliseconds(1400))
 
+        case .cancelled:
+            // Just records. The *cancelling* is `--ui-probe`'s job, through
+            // `MenuBarUI.cancel()` — the same call Escape makes — because the
+            // half worth watching is the capsule's flash and fade, and the mock
+            // cannot produce those by cancelling itself.
+            nextOutcome = .success(.typed)
+            startRecording(hostReachable: true, startingFrame: 0)
+
         case .idle:
             phase = .idle
 
@@ -251,6 +281,7 @@ final class MockPanelModel: PanelModelProviding {
         countdown = limits.countdown(frameCount: frameCount, sampleRate: sampleRate)
         summary = nil
         problem = nil
+        failedRecordingID = nil
         phase = .recording
         recordings.insert(
             RecordingMeta(id: UUID(), createdAt: .now, status: .pending, fileName: "mock.m4a"),
@@ -298,6 +329,7 @@ final class MockPanelModel: PanelModelProviding {
         case .success(let delivery, let mode, let characters):
             summary = DictationSummary(characterCount: characters, mode: mode, delivery: delivery)
             problem = nil
+            failedRecordingID = nil
             phase = .done
             markNewest(.sent)
         case .failure(let kind, let serverMessage):
@@ -305,6 +337,7 @@ final class MockPanelModel: PanelModelProviding {
             summary = nil
             phase = .failed
             markNewest(.failed)
+            failedRecordingID = problem?.isRetryable == true ? recordings.first?.id : nil
         }
     }
 
