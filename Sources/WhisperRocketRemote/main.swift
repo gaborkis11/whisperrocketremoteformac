@@ -9,6 +9,8 @@ if CommandLine.arguments.contains("--mic-probe") {
 
 // F2 audio probes (--devices, --synth-probe, --limits-probe, --record-probe).
 // Only --record-probe opens the microphone; the rest are safe unattended.
+// --flow-probe is NOT here: it drives the whole controller and needs a live
+// NSApplication, so AppDelegate starts it after launch.
 if let code = Probes.runIfRequested() {
     exit(code)
 }
