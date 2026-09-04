@@ -73,8 +73,13 @@
 "capsule.accessibility" = "Diktálás";
 "capsule.cancelHint" = "Az Esc megszakítja, küldés nélkül";
 "capsule.recording.title" = "Hallgatlak…";
+"capsule.storedMode" = "Tárolt mód";
+"capsule.countdown" = "%d mp múlva leáll";
+"capsule.sending.title" = "Küldés…";
+"capsule.sending.attempt" = "%1$d./%2$d. próba";
+"capsule.done.clipboard" = "Vágólapra";
 "capsule.done.pasteHint" = "⌘V bárhol";
-"capsule.failed.subtitle" = "Megvan — újraküldheted";
+"capsule.failed.subtitle" = "Megvan, újraküldhető";
 "capsule.cancelled.title" = "Megszakítva";
 "capsule.cancelled.subtitle" = "Semmi nem ment el";
 

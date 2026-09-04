@@ -23,11 +23,23 @@ public struct WaveformHistory: Equatable, Sendable {
     private var storage: [Double]
     private var cursor: Int
 
+    /// How many samples have gone in since the ring was last reset.
+    ///
+    /// It is here for the equalizer, which re-rolls its per-bar wobble once per
+    /// *sample* rather than once per frame: seeding that wobble from a number
+    /// that only moves when new audio arrives keeps the drawing a pure function
+    /// of the data — the same history always draws the same picture, which is
+    /// what makes a probe still reproducible — and keeps the wobble off the
+    /// display's clock, where it would have cost a redraw every frame instead
+    /// of twenty a second.
+    public private(set) var tick: Int
+
     public init(capacity: Int = WaveformHistory.defaultCapacity, filledWith value: Double = 0) {
         let capacity = max(1, capacity)
         self.capacity = capacity
         storage = Array(repeating: Self.clamped(value), count: capacity)
         cursor = 0
+        tick = 0
     }
 
     /// Values outside `0…1` (and non-finite ones) are clamped on the way in.
@@ -36,6 +48,7 @@ public struct WaveformHistory: Equatable, Sendable {
     public mutating func push(_ value: Double) {
         storage[cursor] = Self.clamped(value)
         cursor = (cursor + 1) % capacity
+        tick &+= 1
     }
 
     public mutating func reset(to value: Double = 0) {
@@ -44,6 +57,7 @@ public struct WaveformHistory: Equatable, Sendable {
             storage[index] = value
         }
         cursor = 0
+        tick = 0
     }
 
     /// Oldest first, newest last — the order a left-to-right waveform draws in.

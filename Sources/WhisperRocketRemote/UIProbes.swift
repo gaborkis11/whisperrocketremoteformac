@@ -627,9 +627,16 @@ enum UIProbes {
     /// the dark one has to prove is that the border and the top lip are still
     /// there when there is almost no contrast to carry them.
     ///
-    /// The waveform is frozen: a still cannot wait for a ring to fill itself in,
-    /// and a snapshot of an empty one would show a flat line under a stage
+    /// The equalizer is frozen: a still cannot wait for a ring to fill itself
+    /// in, and a snapshot of an empty one would show a flat line under a stage
     /// called "listening".
+    ///
+    /// It also photographs the **size candidates** — the same recording still at
+    /// each scale under consideration, so the decision is made by looking rather
+    /// than by reading numbers. Every size in ``CapsuleMetrics`` is a `static
+    /// let` resolved once per process, so a second size means a second process:
+    /// the run below re-launches this binary with `WR_CAPSULE_SCALE` set, and
+    /// each child renders exactly one still and exits.
     private static func runCapsuleProbe(directory: String?) -> Int32 {
         let base = URL(fileURLWithPath: directory ?? FileManager.default.currentDirectoryPath)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
@@ -637,6 +644,13 @@ enum UIProbes {
         let model = MockPanelModel(seedRecordings: false)
         let flash = CapsuleCancelFlash()
         let waveform = syntheticWaveform()
+
+        // A child run: one size still, and nothing else.
+        if CapsuleMetrics.scaleOverride != nil {
+            return renderSizeStill(model: model, flash: flash, waveform: waveform, into: base)
+                ? 0
+                : 1
+        }
 
         let stills: [(name: String, scenario: UIProbeScenario, stage: CapsuleStage)] = [
             ("recording", .recording, .recording),
@@ -669,12 +683,88 @@ enum UIProbes {
             }
         }
 
-        log("capsule-probe", "pill \(Int(CapsuleMetrics.width))×\(Int(CapsuleMetrics.height)), "
-            + "radius \(Int(CapsuleMetrics.cornerRadius)), disc \(Int(CapsuleMetrics.discSize)), "
-            + "button \(Int(CapsuleMetrics.buttonSize)), "
-            + "text column \(Int(CapsuleMetrics.textColumnWidth))")
+        log("capsule-probe", "shipped: \(CapsuleMetrics.summary)")
+        failures += renderSizeCandidates(model: model, flash: flash, waveform: waveform, into: base)
+
         log("capsule-probe", failures == 0 ? "PASS — \(base.path)" : "FAIL (\(failures) render(s))")
         return failures == 0 ? 0 : 1
+    }
+
+    /// The sizes on the table, largest first, with the shipped one last so the
+    /// log ends on what is actually installed.
+    private static let capsuleSizeCandidates: [Double] = [0.60, 0.50, CapsuleMetrics.defaultScale]
+
+    /// One recording still per candidate size, on the light backdrop only: what
+    /// is being compared here is how much room the pill takes, and two backdrops
+    /// of the same answer help nobody.
+    private static func renderSizeCandidates(
+        model: MockPanelModel,
+        flash: CapsuleCancelFlash,
+        waveform: WaveformHistory,
+        into base: URL
+    ) -> Int {
+        var failures = 0
+        for candidate in capsuleSizeCandidates {
+            if abs(candidate - CapsuleMetrics.scale) < 0.0001 {
+                // The size this process was already built at.
+                if !renderSizeStill(model: model, flash: flash, waveform: waveform, into: base) {
+                    failures += 1
+                }
+            } else if !renderSizeStillInChild(scale: candidate, into: base) {
+                failures += 1
+            }
+        }
+        return failures
+    }
+
+    private static func renderSizeStill(
+        model: MockPanelModel,
+        flash: CapsuleCancelFlash,
+        waveform: WaveformHistory,
+        into base: URL
+    ) -> Bool {
+        model.snapshot(.recording)
+        let file = "capsule-size-\(CapsuleMetrics.scalePercent)-light.png"
+        let view = CapsuleView(
+            model: model,
+            flash: flash,
+            frozenStage: .recording,
+            frozenHistory: waveform
+        )
+        guard write(view, to: base.appendingPathComponent(file), isDark: false) else {
+            log("capsule-probe", "FAILED to render \(file)")
+            return false
+        }
+        log("capsule-probe", "wrote \(file) — \(CapsuleMetrics.summary)")
+        return true
+    }
+
+    /// Re-launches this binary at another scale. The child inherits stdout, so
+    /// its one line lands in this run's log in order.
+    private static func renderSizeStillInChild(scale: Double, into base: URL) -> Bool {
+        let executable = Bundle.main.executableURL
+            ?? URL(fileURLWithPath: CommandLine.arguments[0])
+
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = ["--capsule-probe", base.path]
+        var environment = ProcessInfo.processInfo.environment
+        environment[CapsuleMetrics.scaleOverrideKey] = String(scale)
+        process.environment = environment
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            log("capsule-probe", "could not launch a child at scale \(scale) — "
+                + error.localizedDescription)
+            return false
+        }
+        guard process.terminationStatus == 0 else {
+            log("capsule-probe", "the child at scale \(scale) exited \(process.terminationStatus)")
+            return false
+        }
+        return true
     }
 
     /// The mock meter's own speech envelope, run forward at the capsule's 20 Hz

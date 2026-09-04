@@ -54,6 +54,23 @@ import Testing
         #expect(history.samples == [0, 0, 0, 0])
     }
 
+    /// The equalizer seeds its per-bar wobble from this, so it has to move on
+    /// every sample — including the ones that push the same value twice — and
+    /// go back to the start when the ring is cleared for a new dictation.
+    @Test func theTickCountsSamplesAndResetsWithTheRing() {
+        var history = WaveformHistory(capacity: 3)
+        #expect(history.tick == 0)
+        history.push(0.4)
+        history.push(0.4)
+        #expect(history.tick == 2)
+        for _ in 0..<10 {
+            history.push(0.1)
+        }
+        #expect(history.tick == 12)
+        history.reset()
+        #expect(history.tick == 0)
+    }
+
     @Test func capacityIsNeverZero() {
         var history = WaveformHistory(capacity: 0)
         #expect(history.capacity == 1)

@@ -73,8 +73,13 @@
 "capsule.accessibility" = "Dictation";
 "capsule.cancelHint" = "Press Escape to cancel without sending";
 "capsule.recording.title" = "Listening…";
+"capsule.storedMode" = "Stored mode";
+"capsule.countdown" = "Auto-stop in %d s";
+"capsule.sending.title" = "Sending…";
+"capsule.sending.attempt" = "Attempt %1$d of %2$d";
+"capsule.done.clipboard" = "Copied";
 "capsule.done.pasteHint" = "⌘V anywhere";
-"capsule.failed.subtitle" = "Kept — you can send it again";
+"capsule.failed.subtitle" = "Kept — send it again";
 "capsule.cancelled.title" = "Cancelled";
 "capsule.cancelled.subtitle" = "Nothing was sent";
 

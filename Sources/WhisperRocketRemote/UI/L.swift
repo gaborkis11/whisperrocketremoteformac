@@ -113,9 +113,21 @@ nonisolated enum L {
 
     // MARK: - Capsule
 
+    /// The capsule has its own, shorter wording for several things the panel
+    /// already says at length. It is a 250-point HUD read out of the corner of
+    /// an eye: at the text column's width, and with 11 pt as the floor below
+    /// which nothing in it may go, a line has room for about eighteen
+    /// characters. The panel keeps the full sentences.
     static var capsuleAccessibility: String { t("capsule.accessibility") }
     static var capsuleCancelHint: String { t("capsule.cancelHint") }
     static var capsuleListening: String { t("capsule.recording.title") }
+    static var capsuleSending: String { t("capsule.sending.title") }
+    static func capsuleAttempt(_ attempt: Int, of total: Int) -> String {
+        t("capsule.sending.attempt", attempt, total)
+    }
+    static var capsuleStoredMode: String { t("capsule.storedMode") }
+    static func capsuleCountdown(_ seconds: Int) -> String { t("capsule.countdown", seconds) }
+    static var capsuleClipboard: String { t("capsule.done.clipboard") }
     static var capsulePasteHint: String { t("capsule.done.pasteHint") }
     static var capsuleFailedSubtitle: String { t("capsule.failed.subtitle") }
     static var capsuleCancelledTitle: String { t("capsule.cancelled.title") }

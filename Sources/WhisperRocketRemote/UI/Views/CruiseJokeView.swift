@@ -11,32 +11,29 @@ import WRCore
 ///
 /// The rotation survives Reduce Motion: a cross-fading word is not motion, it is
 /// the only sign left that anything is still happening once the stars stop.
+///
+/// It belongs to the panel alone. The capsule was going to carry it too, and at
+/// 560 points it could have — but the shipped capsule is 252, where a
+/// 32-character punchline needs more than half again the room the whole text
+/// column has. A joke with its ending cut off is worse than no joke, so the
+/// capsule's sending stage shows none and this stayed where it fits.
 struct CruiseJokeView: View {
     var reduceMotion: Bool
     /// Set only by `--anim-probe`, so three stills can show three different
     /// jokes and prove the pool is being drawn from. `nil` in the app.
     var frozenMessage: String?
-    /// The capsule is always dark and has no vibrancy behind it, so `.tertiary`
-    /// there is a grey smudge; it passes its own amber instead. `nil` keeps the
-    /// panel's hierarchical style.
-    var tint: Color?
-    var font: Font = .caption.italic()
-    /// The panel centres the line under the rocket; the capsule's text column
-    /// is left-aligned and the joke has to line up with the title above it.
-    var alignment: Alignment = .center
 
     @State private var message = CruiseMessages.next()
 
     var body: some View {
         Text(frozenMessage ?? message)
-            .font(font)
-            .foregroundStyle(tint.map { AnyShapeStyle($0) }
-                ?? AnyShapeStyle(HierarchicalShapeStyle.tertiary))
+            .font(.caption.italic())
+            .foregroundStyle(.tertiary)
             .lineLimit(1)
             // Dynamic Type can take a 32-character line past 300 pt; shrinking a
             // little beats truncating a punchline.
             .minimumScaleFactor(0.75)
-            .frame(maxWidth: .infinity, alignment: alignment)
+            .frame(maxWidth: .infinity)
             .contentTransition(.opacity)
             .accessibilityHidden(true)
             .task {

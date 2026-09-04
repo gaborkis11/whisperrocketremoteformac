@@ -1,8 +1,9 @@
 import SwiftUI
 import WRCore
 
-/// The dictation HUD: a 560×88 pill under the menu-bar icon, showing the one
-/// thing that is happening right now.
+/// The dictation HUD: a small pill under the menu-bar icon, showing the one
+/// thing that is happening right now. Every measurement in it, the pill's own
+/// size included, comes out of ``CapsuleMetrics/scale``.
 ///
 /// It replaces the big panel as the *live* display. The panel still exists — it
 /// is where the recording list and the way into Settings live — but it only
@@ -14,8 +15,8 @@ import WRCore
 /// type, so SwiftUI's observation tracking stays exact through the existential
 /// ``MenuBarUI`` has to store.
 ///
-/// The waveform's ring lives **here**, at the root, and not in the lane view:
-/// the ghost waveform under a finished or failed dictation is the same history,
+/// The equalizer's ring lives **here**, at the root, and not in the lane view:
+/// the ghost lane under a finished or failed dictation is the same history,
 /// and putting the ring in a view that the stage change replaces would throw the
 /// recording away at the exact moment it becomes the picture.
 struct CapsuleView<Model: PanelModelProviding>: View {
@@ -71,7 +72,7 @@ struct CapsuleView<Model: PanelModelProviding>: View {
     private var content: some View {
         if let stage {
             HStack(spacing: CapsuleMetrics.itemSpacing) {
-                CapsuleRocketBadge()
+                CapsuleRocketBadge(isListening: stage == .recording)
 
                 CapsuleTextColumn(
                     title: title(for: stage),
@@ -108,26 +109,35 @@ struct CapsuleView<Model: PanelModelProviding>: View {
     private func lane(for stage: CapsuleStage) -> some View {
         switch stage {
         case .recording:
-            CapsuleWaveformView(history: waveform, mode: .live)
+            CapsuleEqualizerView(history: waveform, mode: .live)
         case .sending:
             RocketCruiseView(
                 reduceMotion: reduceMotion,
                 height: CapsuleMetrics.laneHeight
             )
         case .done, .cancelled:
-            CapsuleWaveformView(history: waveform, mode: .ghost)
+            CapsuleEqualizerView(history: waveform, mode: .ghost)
         case .failed:
-            CapsuleWaveformView(history: waveform, mode: .ghostFailed)
+            CapsuleEqualizerView(history: waveform, mode: .ghostFailed)
         }
     }
 
     // MARK: - The words
 
+    /// The capsule's own, shorter wording. The panel says these things at
+    /// length; a pill this size has room for about eighteen characters, and
+    /// "Sending to the host…" truncated to "Sending to th…" is worse than
+    /// "Sending…" said properly.
     private func title(for stage: CapsuleStage) -> String {
         switch stage {
         case .recording: L.capsuleListening
-        case .sending: L.sendingTitle
-        case .done: model.summary?.delivery.localizedHeadline ?? L.statusDone
+        case .sending: L.capsuleSending
+        case .done:
+            switch model.summary?.delivery {
+            case .typed: L.doneTyped
+            case .clipboardOnly: L.capsuleClipboard
+            case nil: L.statusDone
+            }
         case .failed: model.problem?.title ?? L.errorTitleGeneric
         case .cancelled: L.capsuleCancelledTitle
         }
@@ -143,7 +153,7 @@ struct CapsuleView<Model: PanelModelProviding>: View {
                 return .countdown(countdown)
             }
             if model.hostReachable == false {
-                return .warning(L.storedModeTitle)
+                return .warning(L.capsuleStoredMode)
             }
             // Whole seconds, deliberately. `elapsed` moves thirty times a
             // second and the counter shows m:ss, so letting the raw value
@@ -154,10 +164,14 @@ struct CapsuleView<Model: PanelModelProviding>: View {
             return .counter(model.elapsed.rounded(.down))
 
         case .sending:
+            // A retry is worth a line; a first attempt is not. The rotating
+            // joke that used to live here needs about 165 points of text at
+            // 11 pt and there are barely a hundred, so it stays in the panel
+            // rather than being shown with its punchline cut off.
             if model.attempt > 1 {
-                return .note(L.sendingAttempt(model.attempt, of: model.maxAttempts))
+                return .note(L.capsuleAttempt(model.attempt, of: model.maxAttempts))
             }
-            return .joke(reduceMotion: reduceMotion)
+            return .none
 
         case .done:
             guard let summary = model.summary else { return .note("") }

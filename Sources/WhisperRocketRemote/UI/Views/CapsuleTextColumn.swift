@@ -13,8 +13,13 @@ struct CapsuleTextColumn: View {
     var isPrimary: Bool
     var subline: Subline
 
-    /// The five things the second line is ever allowed to be.
+    /// The things the second line is ever allowed to be — including nothing at
+    /// all, which is what the sending stage shows: the title says it, the
+    /// rocket beside it says it again, and a line of filler under them would be
+    /// the third time.
     enum Subline: Equatable {
+        /// No second line; the title centres itself in the column.
+        case none
         /// Seconds captured so far.
         case counter(TimeInterval)
         /// The last 30 s of the ceiling, in the counter's place.
@@ -23,19 +28,24 @@ struct CapsuleTextColumn: View {
         case warning(String)
         /// Plain supporting text: the paste hint, the failure's reassurance.
         case note(String)
-        /// The rotating line under the rocket while the host thinks.
-        case joke(reduceMotion: Bool)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: CapsuleMetrics.textLineSpacing) {
             Text(title)
-                .font(.system(size: isPrimary ? 15 : 14, weight: .semibold))
+                .font(.system(
+                    size: isPrimary
+                        ? CapsuleMetrics.titleFontSize
+                        : CapsuleMetrics.secondaryTitleFontSize,
+                    weight: .semibold
+                ))
                 .foregroundStyle(CapsuleMetrics.ink)
                 .lineLimit(1)
 
-            sublineView
-                .lineLimit(1)
+            if subline != .none {
+                sublineView
+                    .lineLimit(1)
+            }
         }
         .frame(width: CapsuleMetrics.textColumnWidth, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -44,15 +54,18 @@ struct CapsuleTextColumn: View {
     @ViewBuilder
     private var sublineView: some View {
         switch subline {
+        case .none:
+            EmptyView()
+
         case .counter(let elapsed):
             Text(Duration.seconds(elapsed), format: .time(pattern: .minuteSecond))
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: CapsuleMetrics.counterFontSize, weight: .semibold))
                 .monospacedDigit()
                 .foregroundStyle(CapsuleMetrics.amber)
 
         case .countdown(let seconds):
-            Text(L.countdown(seconds))
-                .font(.system(size: 13, weight: .semibold))
+            Text(L.capsuleCountdown(seconds))
+                .font(.system(size: CapsuleMetrics.counterFontSize, weight: .semibold))
                 .monospacedDigit()
                 // The last five seconds go red; before that it is a heads-up,
                 // not an alarm.
@@ -60,7 +73,7 @@ struct CapsuleTextColumn: View {
 
         case .warning(let text):
             Text(text)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: CapsuleMetrics.noteFontSize, weight: .medium))
                 .foregroundStyle(CapsuleMetrics.subdued)
                 // A Hungarian warning is half again as long as its English
                 // original; shrinking a little beats truncating it. Only the
@@ -70,17 +83,9 @@ struct CapsuleTextColumn: View {
 
         case .note(let text):
             Text(text)
-                .font(.system(size: 12))
+                .font(.system(size: CapsuleMetrics.noteFontSize))
                 .foregroundStyle(CapsuleMetrics.subdued)
                 .minimumScaleFactor(0.75)
-
-        case .joke(let reduceMotion):
-            CruiseJokeView(
-                reduceMotion: reduceMotion,
-                tint: CapsuleMetrics.amber.opacity(0.85),
-                font: .system(size: 12).italic(),
-                alignment: .leading
-            )
         }
     }
 }

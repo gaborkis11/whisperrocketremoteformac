@@ -57,7 +57,7 @@ struct CapsuleActionButton: View {
                     .fill(.white)
                     .frame(width: CapsuleMetrics.stopSquare, height: CapsuleMetrics.stopSquare)
             }
-            .shadow(color: CapsuleMetrics.stopShadow, radius: 9, y: 3)
+            .shadow(color: CapsuleMetrics.stopShadow, radius: CapsuleMetrics.stopShadowRadius, y: 3)
             .frame(width: CapsuleMetrics.buttonSize, height: CapsuleMetrics.buttonSize)
     }
 
@@ -83,9 +83,12 @@ struct CapsuleActionButton: View {
     private func spinnerArc(rotation: Double) -> some View {
         Circle()
             .trim(from: 0, to: 0.3)
-            .stroke(CapsuleMetrics.amber, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+            .stroke(
+                CapsuleMetrics.amber,
+                style: StrokeStyle(lineWidth: CapsuleMetrics.spinnerStroke, lineCap: .round)
+            )
             .rotationEffect(.degrees(rotation))
-            .frame(width: 26, height: 26)
+            .frame(width: CapsuleMetrics.spinnerSize, height: CapsuleMetrics.spinnerSize)
     }
 
     private var doneFace: some View {
@@ -93,7 +96,7 @@ struct CapsuleActionButton: View {
             .fill(CapsuleMetrics.amber)
             .overlay {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: CapsuleMetrics.glyphSize, weight: .bold))
                     .foregroundStyle(CapsuleMetrics.background)
             }
             .accessibilityHidden(true)
@@ -104,10 +107,10 @@ struct CapsuleActionButton: View {
             .fill(CapsuleMetrics.stopGradient)
             .overlay {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: CapsuleMetrics.glyphSize, weight: .bold))
                     .foregroundStyle(.white)
             }
-            .shadow(color: CapsuleMetrics.stopShadow, radius: 9, y: 3)
+            .shadow(color: CapsuleMetrics.stopShadow, radius: CapsuleMetrics.stopShadowRadius, y: 3)
     }
 
     private var cancelledFace: some View {
@@ -118,7 +121,7 @@ struct CapsuleActionButton: View {
             }
             .overlay {
                 Image(systemName: "xmark")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: CapsuleMetrics.glyphSize * 0.9, weight: .bold))
                     .foregroundStyle(CapsuleMetrics.ink)
             }
             .accessibilityHidden(true)
