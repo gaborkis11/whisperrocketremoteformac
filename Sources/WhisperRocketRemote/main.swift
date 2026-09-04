@@ -7,6 +7,12 @@ if CommandLine.arguments.contains("--mic-probe") {
     exit(0)
 }
 
+// F2 audio probes (--devices, --synth-probe, --limits-probe, --record-probe).
+// Only --record-probe opens the microphone; the rest are safe unattended.
+if let code = Probes.runIfRequested() {
+    exit(code)
+}
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
