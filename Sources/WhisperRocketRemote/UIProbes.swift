@@ -135,6 +135,55 @@ enum UIProbes {
         }
     }
 
+    // MARK: - --show-settings (the real controller)
+
+    /// `--show-settings [--capture <dir>] [--seconds N]`
+    ///
+    /// Opens the **real** settings window against the real model, closes it, and
+    /// opens it again — capturing both. The second capture is the whole point:
+    /// the window is reused, so the SwiftUI view's `.task` runs only on the
+    /// first open, and a value the form reads from the system rather than from
+    /// an observable property (the login item's status) used to freeze at
+    /// whatever it was then. Two screenshots that disagree is exactly the bug;
+    /// two that agree with `--login-status` is the fix.
+    ///
+    /// Reads only. It writes no settings and asks for no permission.
+    static func openSettingsIfRequested(_ ui: MenuBarUI, arguments: [String] = CommandLine.arguments) {
+        guard arguments.contains("--show-settings") else { return }
+        let directory = value(named: "--capture", in: arguments)
+        let quitAfter = seconds(named: "--seconds", in: arguments)
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(800))
+            let url = directory.map { URL(fileURLWithPath: $0) }
+            if let url {
+                try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            }
+
+            ui.showSettings()
+            try? await Task.sleep(for: .milliseconds(700))
+            log("show-settings", "first open — real controller")
+            if let url {
+                write(ui.captureSettings(), to: url, named: "settings-first-open.png", tag: "show-settings")
+            }
+
+            ui.closeSettings()
+            try? await Task.sleep(for: .milliseconds(400))
+            ui.showSettings()
+            try? await Task.sleep(for: .milliseconds(700))
+            log("show-settings", "reopened after close — this is the state that used to go stale")
+            if let url {
+                write(ui.captureSettings(), to: url, named: "settings-reopened.png", tag: "show-settings")
+            }
+
+            if let quitAfter {
+                try? await Task.sleep(for: .seconds(quitAfter))
+                log("show-settings", "auto-quit")
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
     // MARK: - --ui-probe
 
     private static func startUI(

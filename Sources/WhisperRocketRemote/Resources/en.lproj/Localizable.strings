@@ -89,8 +89,10 @@
 "settings.section.host" = "Host";
 "settings.launchAtLogin" = "Launch at login";
 "settings.launchAtLogin.unavailable" = "Available once the app runs from the Applications folder.";
+"settings.launchAtLogin.needsApproval" = "macOS is waiting for your approval in Login Items.";
+"settings.launchAtLogin.openSettings" = "Open Login Items…";
 "settings.hotkey" = "Shortcut";
-"settings.hotkey.needsCommand" = "A dictation shortcut has to include Command — without it the keys just type into whatever app you’re in.";
+"settings.hotkey.needsModifier" = "A dictation shortcut needs Command, Option or Control — without one of those the keys just type into whatever app you’re in.";
 "settings.microphone" = "Microphone";
 "settings.microphone.systemDefault" = "System default";
 "settings.microphone.missing" = "The saved microphone isn’t connected — recording from the system default.";

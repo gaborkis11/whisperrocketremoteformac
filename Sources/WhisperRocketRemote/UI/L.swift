@@ -136,8 +136,10 @@ nonisolated enum L {
     static var settingsSectionHost: String { t("settings.section.host") }
     static var settingsLaunchAtLogin: String { t("settings.launchAtLogin") }
     static var settingsLaunchAtLoginUnavailable: String { t("settings.launchAtLogin.unavailable") }
+    static var settingsLaunchAtLoginNeedsApproval: String { t("settings.launchAtLogin.needsApproval") }
+    static var settingsLaunchAtLoginOpenSettings: String { t("settings.launchAtLogin.openSettings") }
     static var settingsHotkey: String { t("settings.hotkey") }
-    static var settingsHotkeyNeedsCommand: String { t("settings.hotkey.needsCommand") }
+    static var settingsHotkeyNeedsModifier: String { t("settings.hotkey.needsModifier") }
     static var settingsMicrophone: String { t("settings.microphone") }
     static var settingsMicrophoneSystemDefault: String { t("settings.microphone.systemDefault") }
     static var settingsMicrophoneMissing: String { t("settings.microphone.missing") }

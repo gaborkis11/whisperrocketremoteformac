@@ -16,13 +16,24 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController {
     private let makeContentView: () -> NSView
+    /// Run on every `show()`, including the ones that only re-order an existing
+    /// window to the front.
+    ///
+    /// The window is deliberately reused, which means the SwiftUI view inside it
+    /// is never re-created and its `.task` never runs a second time. Anything
+    /// the form reads from the *system* rather than from the model — the login
+    /// item's status, the device list — would otherwise be frozen at whatever it
+    /// was the first time the window opened. This is the hook that unfreezes it.
+    private let onShow: () -> Void
     private var window: NSWindow?
 
-    init(makeContentView: @escaping () -> NSView) {
+    init(onShow: @escaping () -> Void = {}, makeContentView: @escaping () -> NSView) {
+        self.onShow = onShow
         self.makeContentView = makeContentView
     }
 
     func show() {
+        onShow()
         let window = window ?? makeWindow()
         self.window = window
         if !window.isVisible {

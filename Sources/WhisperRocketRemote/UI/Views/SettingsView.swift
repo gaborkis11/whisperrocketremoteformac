@@ -20,7 +20,9 @@ struct SettingsView<Model: SettingsModelProviding>: View {
             Section(L.settingsSectionGeneral) {
                 LaunchAtLoginRow(
                     isOn: $model.launchAtLogin,
-                    isAvailable: model.isLaunchAtLoginAvailable
+                    isAvailable: model.isLaunchAtLoginAvailable,
+                    needsApproval: model.loginItemNeedsApproval,
+                    onOpenLoginItems: model.openLoginItemsSettings
                 )
 
                 KeyboardShortcuts.Recorder(L.settingsHotkey, name: shortcutName)
@@ -65,11 +67,15 @@ struct SettingsView<Model: SettingsModelProviding>: View {
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
         .task {
-            // Both can change while the window is closed — a microphone gets
-            // unplugged, the permission is revoked in System Settings — so they
-            // are re-read every time it opens rather than cached at launch.
+            // All three can change while the window is closed — a microphone
+            // gets unplugged, a permission is revoked in System Settings, the
+            // login item is switched off there — so they are re-read rather
+            // than cached at launch. `.task` only covers the *first* appearance
+            // of this view, though: the window is reused, so the reopen case is
+            // handled by `SettingsWindowController.onShow`.
             model.refreshInputDevices()
             model.refreshAccessibilityStatus()
+            model.refreshLoginItemState()
         }
     }
 }

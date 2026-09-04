@@ -18,6 +18,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        // Before anything can read a preference: on a fresh install the sounds
+        // switch has to start on and the port has to be 8771, and
+        // `UserDefaults.bool`/`integer` would answer `false`/`0` for keys nobody
+        // has written yet.
+        Settings.registerDefaults()
+
         // The flow probe drives the real controller and terminates the process
         // when it is done, so nothing else may be wired up alongside it.
         if let request = FlowProbe.request(from: CommandLine.arguments) {
@@ -53,6 +59,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // beat after launch, so the integrated path can be checked without
             // a human clicking the menu bar. No-op without the flag.
             UIProbes.openPanelIfRequested(ui)
+            // `--show-settings`: same idea for the settings window, opened twice
+            // so the reopen path is actually exercised. No-op without the flag.
+            UIProbes.openSettingsIfRequested(ui)
             NSLog("[wrr] controller ready: hotkey=%@ recordings=%d host=%@",
                   hotkeys.shortcut?.description ?? "<unset>",
                   controller.recordings.count,

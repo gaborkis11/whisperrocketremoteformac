@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import ServiceManagement
 import WRCore
 
 /// Command-line probes for the audio pipeline.
@@ -14,6 +15,9 @@ enum Probes {
         let flags = Set(arguments)
         if flags.contains("--devices") { return runDevices() }
         if flags.contains("--limits-probe") { return runLimits() }
+        if let index = arguments.firstIndex(of: "--login-status") {
+            return runLoginStatus(arguments: Array(arguments.dropFirst(index + 1)))
+        }
         if let index = arguments.firstIndex(of: "--synth-probe") {
             return runSynth(arguments: Array(arguments.dropFirst(index + 1)))
         }
@@ -237,6 +241,44 @@ enum Probes {
             && totalAccepted == Int64(300 * sampleRate)
         log("limits-probe", ok ? "PASS" : "FAIL")
         return ok ? 0 : 1
+    }
+
+    // MARK: - --login-status
+
+    /// `--login-status [out.txt]`
+    ///
+    /// Prints the *raw* `SMAppService.mainApp.status` next to what ``LoginItem``
+    /// makes of it, from inside the real bundle. The optional path is for the
+    /// `open -n --args` route, where stdout goes nowhere.
+    ///
+    /// This exists because "the switch springs back to off" has two completely
+    /// different causes — a registration that did not take, and a registration
+    /// that took but is not being re-read — and only the raw status tells them
+    /// apart.
+    private static func runLoginStatus(arguments: [String]) -> Int32 {
+        let (positional, _) = parse(arguments, valueFlags: [])
+        let status = SMAppService.mainApp.status
+        let name: String = switch status {
+        case .notRegistered: "notRegistered"
+        case .enabled: "enabled"
+        case .requiresApproval: "requiresApproval"
+        case .notFound: "notFound"
+        @unknown default: "unknown"
+        }
+        let lines = [
+            "bundlePath=\(Bundle.main.bundlePath)",
+            "bundleID=\(Bundle.main.bundleIdentifier ?? "<none>")",
+            "isInstalledInApplications=\(LoginItem.isInstalledInApplications)",
+            "SMAppService.mainApp.status=\(name) (rawValue=\(status.rawValue))",
+            "LoginItem.state()=\(LoginItem.state())",
+            "LoginItem.state().isOn=\(LoginItem.state().isOn)",
+        ]
+        for line in lines { log("login-status", line) }
+        if let path = positional.first {
+            try? lines.joined(separator: "\n").appending("\n")
+                .write(toFile: path, atomically: true, encoding: .utf8)
+        }
+        return 0
     }
 
     // MARK: - --record-probe

@@ -15,6 +15,7 @@ import WRCore
 final class MockSettingsModel: SettingsModelProviding {
     var launchAtLogin = false
     var isLaunchAtLoginAvailable = true
+    var loginItemNeedsApproval = false
 
     var inputDeviceUID: String?
     private(set) var inputDevices: [AudioInputDevice] = []
@@ -66,4 +67,10 @@ final class MockSettingsModel: SettingsModelProviding {
     }
 
     func refreshAccessibilityStatus() {}
+
+    /// In memory, like the switch itself — a probe must never re-read (or open)
+    /// the real Login Items.
+    func refreshLoginItemState() {}
+
+    func openLoginItemsSettings() {}
 }

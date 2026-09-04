@@ -43,9 +43,18 @@ final class MenuBarUI {
         self.panelModel = panelModel
         lastPhase = panelModel.phase
 
-        // The concrete type is captured in the closure rather than stored, so
+        // The concrete type is captured in the closures rather than stored, so
         // the window controller needs no type parameter of its own.
-        let settingsWindow = SettingsWindowController {
+        let settingsWindow = SettingsWindowController(
+            onShow: { [weak settingsModel] in
+                // The window is reused, so the view's `.task` runs only once —
+                // without this the login-item switch would keep showing what
+                // the system said when the window first opened.
+                settingsModel?.refreshLoginItemState()
+                settingsModel?.refreshInputDevices()
+                settingsModel?.refreshAccessibilityStatus()
+            }
+        ) {
             let hosting = NSHostingView(
                 rootView: SettingsView(model: settingsModel, shortcutName: shortcutName)
             )
@@ -90,6 +99,11 @@ final class MenuBarUI {
 
     func showSettings() {
         settingsWindow.show()
+    }
+
+    /// Only the probes close it programmatically; a person uses the red button.
+    func closeSettings() {
+        settingsWindow.close()
     }
 
     /// The panel's screen rectangle, for the probes' screenshots.

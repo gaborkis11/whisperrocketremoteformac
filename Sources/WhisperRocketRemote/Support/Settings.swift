@@ -21,8 +21,18 @@ final class Settings {
 
     @ObservationIgnored private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+    /// The factory settings, as a registration domain.
+    ///
+    /// `UserDefaults.bool(forKey:)` answers `false` for a key nobody has written
+    /// yet, which would silently ship the sounds switch off on a fresh install —
+    /// so the wanted defaults are registered rather than left to the zero value.
+    /// Registration is not a write: it only supplies the answer until the user
+    /// makes a choice, and `defaults delete` still returns to it.
+    ///
+    /// Called from ``init`` and again from the app delegate, so the values are
+    /// in place from the first line of `applicationDidFinishLaunching` even if
+    /// something reads them before the `Settings` object exists.
+    static func registerDefaults(in defaults: UserDefaults = .standard) {
         defaults.register(defaults: [
             Key.host: "",
             Key.port: HostConfig.defaultPort,
@@ -32,6 +42,11 @@ final class Settings {
             Key.autoPasteEnabled: false,
             Key.launchAtLoginEnabled: false,
         ])
+    }
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        Self.registerDefaults(in: defaults)
     }
 
     var host: String {

@@ -35,19 +35,13 @@ final class HotkeyManager {
         KeyboardShortcuts.getShortcut(for: .toggleDictation)
     }
 
-    /// The Command-key rule the recorder UI enforces, applied to the shortcut
-    /// that is actually stored — a combination without Command types characters
-    /// into the focused app instead of toggling dictation.
+    /// The same rule the recorder UI enforces — at least one of ⌘/⌥/⌃ —
+    /// applied to the shortcut that is actually stored. Anything less would be
+    /// a plain keystroke that types into the focused app instead of toggling
+    /// dictation. It goes through the recorder's own translation so the two can
+    /// never drift apart.
     var isStoredShortcutValid: Bool {
         guard let shortcut else { return false }
-        return HotkeyValidation.isValid(
-            HotkeyModifiers(
-                command: shortcut.modifiers.contains(.command),
-                shift: shortcut.modifiers.contains(.shift),
-                option: shortcut.modifiers.contains(.option),
-                control: shortcut.modifiers.contains(.control),
-                function: shortcut.modifiers.contains(.function)
-            )
-        )
+        return HotkeyValidation.isValid(HotkeyShortcutValidator.modifiers(from: shortcut.modifiers))
     }
 }

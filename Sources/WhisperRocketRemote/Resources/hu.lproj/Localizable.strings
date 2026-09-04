@@ -89,8 +89,10 @@
 "settings.section.host" = "Host";
 "settings.launchAtLogin" = "Indítás bejelentkezéskor";
 "settings.launchAtLogin.unavailable" = "Akkor állítható, ha az app az Alkalmazások mappából fut.";
+"settings.launchAtLogin.needsApproval" = "A macOS a jóváhagyásodra vár a Bejelentkezési elemeknél.";
+"settings.launchAtLogin.openSettings" = "Bejelentkezési elemek megnyitása…";
 "settings.hotkey" = "Gyorsbillentyű";
-"settings.hotkey.needsCommand" = "A diktálás gyorsbillentyűjében kell lennie Commandnak — nélküle a billentyűk egyszerűen beleírnának abba az appba, amiben épp vagy.";
+"settings.hotkey.needsModifier" = "A diktálás gyorsbillentyűjéhez kell Command, Option vagy Control — valamelyik nélkül a billentyűk egyszerűen beleírnának abba az appba, amiben épp vagy.";
 "settings.microphone" = "Mikrofon";
 "settings.microphone.systemDefault" = "Rendszer alapértelmezett";
 "settings.microphone.missing" = "A mentett mikrofon nincs csatlakoztatva — a rendszer alapértelmezettjéről veszek fel.";

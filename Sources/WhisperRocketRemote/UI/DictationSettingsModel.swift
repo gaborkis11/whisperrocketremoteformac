@@ -8,8 +8,10 @@ import WRCore
 /// A wrapper for the same reason ``DictationPanelModel`` is one, and because the
 /// settings form binds to things that live in three different places — user
 /// defaults, the Keychain, and `SMAppService` — which the form should not have
-/// to know about. Every property below is computed, so what the window shows is
-/// what the system currently thinks, not a copy made when it opened.
+/// to know about.
+///
+/// Most properties are computed straight through to their real home. The login
+/// item is the exception, and deliberately so: see ``loginItemState``.
 @Observable
 @MainActor
 final class DictationSettingsModel: SettingsModelProviding {
@@ -20,31 +22,75 @@ final class DictationSettingsModel: SettingsModelProviding {
     /// hardware is plugged in, not when a property is written.
     private(set) var inputDevices: [AudioInputDevice] = []
 
+    /// `SMAppService`'s answer, **stored**.
+    ///
+    /// This used to be a computed property reading `LoginItem.state()` on every
+    /// access, which looked like the honest design and was in fact the bug:
+    /// a computed property in an `@Observable` class registers no dependency,
+    /// so SwiftUI had nothing to invalidate on. The switch therefore showed
+    /// whatever `body` happened to read the last time something *else* forced a
+    /// redraw — reliably stale by the time the window was reopened, even though
+    /// the registration itself was fine (`sfltool dumpbtm` and a `--login-status`
+    /// probe both said `enabled`).
+    ///
+    /// So: stored, hence observable; written whenever the switch is used and
+    /// re-read from the system every time the window is shown, which covers the
+    /// case of someone turning the login item off in System Settings.
+    private(set) var loginItemState: LoginItem.State
+
     init(controller: DictationController) {
         self.controller = controller
         inputDevices = controller.inputDevices
+        loginItemState = controller.loginItemState
     }
 
     // MARK: - General
 
-    /// Reads `SMAppService`'s real answer rather than the stored preference, so
-    /// a login item the system turned off behind our back shows as off.
     var launchAtLogin: Bool {
-        get { controller.loginItemState.isOn }
+        get { loginItemState.isOn }
         set {
             do {
                 try controller.setLaunchAtLogin(newValue)
             } catch {
                 // The only realistic failure is "not in /Applications", which
                 // `isLaunchAtLoginAvailable` already disables the switch for.
-                // The toggle springs back to the real state on the next read,
-                // which is the honest outcome; this line is for the log.
                 NSLog("[wrr] launch-at-login change refused: %@", String(describing: error))
             }
+            // Either way the switch ends up showing what the system now says,
+            // not what was asked for — including `requiresApproval`, which is
+            // "registered but off until you say so" rather than a silent no.
+            refreshLoginItemState()
+            confirmLoginItemState(matches: newValue)
+        }
+    }
+
+    /// `SMAppService`'s status is served from the background task management
+    /// daemon, and right after a `register()` it has occasionally not caught up
+    /// by the time we read it back. One late re-read costs nothing and is only
+    /// scheduled when the immediate answer disagreed with the request, so the
+    /// switch cannot flicker in the normal case.
+    private func confirmLoginItemState(matches requested: Bool) {
+        guard loginItemState.isOn != requested, loginItemState != .requiresApproval else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            self?.refreshLoginItemState()
         }
     }
 
     var isLaunchAtLoginAvailable: Bool { LoginItem.isInstalledInApplications }
+
+    /// Registered, but macOS wants the user to confirm it in Login Items. The
+    /// switch stays off in that state, so without this the window would just
+    /// look broken.
+    var loginItemNeedsApproval: Bool { loginItemState == .requiresApproval }
+
+    func refreshLoginItemState() {
+        loginItemState = controller.loginItemState
+    }
+
+    func openLoginItemsSettings() {
+        LoginItem.openLoginItemsSettings()
+    }
 
     // MARK: - Dictation
 
