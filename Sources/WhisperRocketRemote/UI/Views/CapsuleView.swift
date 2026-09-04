@@ -27,9 +27,19 @@ struct CapsuleView<Model: PanelModelProviding>: View {
     /// Set only by `--capsule-probe`: a still cannot wait twenty seconds for a
     /// waveform to fill itself in.
     var frozenHistory: WaveformHistory?
+    /// Set only by `--anim-probe`, to photograph the cruise on a chosen frame.
+    /// `nil` in the app.
+    var frozenInstant: CruiseInstant?
+    /// Set only by `--anim-probe`. `accessibilityReduceMotion` is a read-only
+    /// environment value — a probe cannot write it and must not change the real
+    /// system setting — so overriding it here is the only way to photograph the
+    /// branch.
+    var frozenReduceMotion: Bool?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @State private var history = WaveformHistory()
+
+    private var reduceMotion: Bool { frozenReduceMotion ?? systemReduceMotion }
 
     private var stage: CapsuleStage? {
         if let frozenStage { return frozenStage }
@@ -113,6 +123,7 @@ struct CapsuleView<Model: PanelModelProviding>: View {
         case .sending:
             RocketCruiseView(
                 reduceMotion: reduceMotion,
+                frozen: frozenInstant,
                 height: CapsuleMetrics.laneHeight
             )
         case .done, .cancelled:

@@ -23,7 +23,6 @@ final class MockPanelModel: PanelModelProviding {
     private(set) var phase: DictationPhase = .idle
     private(set) var hostReachable: Bool?
     private(set) var level: Double = 0
-    private(set) var peak: Double = 0
     private(set) var elapsed: TimeInterval = 0
     private(set) var countdown: Int?
     private(set) var attempt = 1
@@ -32,7 +31,6 @@ final class MockPanelModel: PanelModelProviding {
     private(set) var summary: DictationSummary?
     private(set) var problem: DictationProblem?
     private(set) var failedRecordingID: UUID?
-    var shortcutDescription: String? = "⌘⇧Space"
 
     var hasFailedRecordings: Bool { recordings.contains { $0.status == .failed } }
 
@@ -120,7 +118,6 @@ final class MockPanelModel: PanelModelProviding {
         attempt = 1
         hostReachable = nil
         level = 0.62
-        peak = 0.78
         elapsed = 47
 
         switch scenario {
@@ -162,7 +159,6 @@ final class MockPanelModel: PanelModelProviding {
             // panel has no cancelled stage and never will.
             phase = .idle
             level = 0
-            peak = 0
         case .idle, .full:
             phase = .idle
         }
@@ -287,7 +283,7 @@ final class MockPanelModel: PanelModelProviding {
             RecordingMeta(id: UUID(), createdAt: .now, status: .pending, fileName: "mock.m4a"),
             at: 0
         )
-        recordings = Array(recordings.prefix(3))
+        recordings = Array(recordings.prefix(1))
         startMeter()
     }
 
@@ -365,7 +361,6 @@ final class MockPanelModel: PanelModelProviding {
         meterTask?.cancel()
         meterTask = nil
         level = 0
-        peak = 0
     }
 
     private func tickMeter(dt: Double) {
@@ -395,17 +390,13 @@ final class MockPanelModel: PanelModelProviding {
         let rising = target > level
         let tau = rising ? 0.03 : 0.25
         level += (target - level) * (1 - exp(-dt / tau))
-        if target > peak {
-            peak = target
-        } else {
-            peak += (target - peak) * (1 - exp(-dt / 1.0))
-        }
     }
 
     // MARK: - Seed data
 
-    /// A full ring with one of each interesting status, so the list and the
-    /// menu-bar badge have something to show from the first frame.
+    /// The ring holds one entry now, so the seed is one entry: a minute and a
+    /// half old, 42 seconds long, already sent — the menu's "Last record" line
+    /// with something in it from the first frame.
     private static func seededRing() -> [RecordingMeta] {
         [
             RecordingMeta(
@@ -414,21 +405,7 @@ final class MockPanelModel: PanelModelProviding {
                 durationSeconds: 42,
                 status: .sent,
                 fileName: "a.m4a"
-            ),
-            RecordingMeta(
-                id: UUID(),
-                createdAt: Date(timeIntervalSinceNow: -420),
-                durationSeconds: 71,
-                status: .failed,
-                fileName: "b.m4a"
-            ),
-            RecordingMeta(
-                id: UUID(),
-                createdAt: Date(timeIntervalSinceNow: -1_800),
-                durationSeconds: 128,
-                status: .pending,
-                fileName: "c.m4a"
-            ),
+            )
         ]
     }
 }

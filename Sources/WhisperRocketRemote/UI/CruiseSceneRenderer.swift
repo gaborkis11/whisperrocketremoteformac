@@ -17,7 +17,7 @@ nonisolated enum CruiseSceneRenderer {
         size: CGSize,
         time: Double,
         scheme: ColorScheme,
-        rocketScaleCap: Double = PanelMetrics.cruiseRocketScale
+        rocketScaleCap: Double = CruiseMetrics.rocketScale
     ) {
         guard size.width > 0, size.height > 0 else { return }
         drawStars(&context, size: size, time: time, scheme: scheme)

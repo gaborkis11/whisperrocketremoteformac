@@ -9,7 +9,7 @@ import Foundation
 ///   strings live in the SPM **resource bundle**. Every lookup has to name that
 ///   bundle explicitly, and doing it once here is the only way it stays true.
 /// * A typo in a key is otherwise invisible until the key itself shows up in
-///   the panel. Here it is a compile error.
+///   the UI. Here it is a compile error.
 ///
 /// The keys are also what ``UIProbes`` audits: it parses both `.lproj` files
 /// and checks that neither language is missing one.
@@ -39,41 +39,23 @@ nonisolated enum L {
     static var statusItemAccessibility: String { t("statusItem.accessibility") }
     static var statusItemAccessibilityFailed: String { t("statusItem.accessibility.failed") }
 
-    // MARK: - Panel chrome
+    // MARK: - Phase words
 
-    static var appName: String { t("app.name") }
-    static var statusIdle: String { t("status.idle") }
     static var statusRecording: String { t("status.recording") }
-    static var statusSending: String { t("status.sending") }
     static var statusDone: String { t("status.done") }
-    static var statusFailed: String { t("status.failed") }
 
-    // MARK: - Idle
+    // MARK: - Actions
 
-    static func idleHint(shortcut: String) -> String { t("idle.hint.shortcut", shortcut) }
-    static var idleHintNoShortcut: String { t("idle.hint.noShortcut") }
-    static var startRecording: String { t("action.startRecording") }
     static var stopRecording: String { t("action.stopRecording") }
-
-    // MARK: - Recording
-
-    static var recordingHint: String { t("recording.hint") }
-    static var storedModeTitle: String { t("storedMode.title") }
-    static var storedModeDetail: String { t("storedMode.detail") }
-    static func countdown(_ seconds: Int) -> String { t("countdown.autoStop", seconds) }
 
     // MARK: - Sending
 
     static var sendingTitle: String { t("sending.title") }
-    static func sendingAttempt(_ attempt: Int, of total: Int) -> String {
-        t("sending.attempt", attempt, total)
-    }
 
     // MARK: - Done
 
     static var doneTyped: String { t("done.typed") }
     static var doneClipboard: String { t("done.clipboard") }
-    static var doneComposed: String { t("done.composed") }
     static func doneCharacters(_ count: Int) -> String { t("done.characters", count) }
     static var doneReasonAutoPasteOff: String { t("done.reason.autoPasteOff") }
     static var doneReasonAccessibility: String { t("done.reason.accessibility") }
@@ -81,9 +63,6 @@ nonisolated enum L {
     static var doneReasonFocusUnknown: String { t("done.reason.focus.unknown") }
 
     // MARK: - Failure
-
-    static var failureHostSaid: String { t("failed.hostSaid") }
-    static var failureKept: String { t("failed.kept") }
 
     static var errorTitleGeneric: String { t("error.title.generic") }
     static var errorTitleToken: String { t("error.title.token") }
@@ -113,11 +92,10 @@ nonisolated enum L {
 
     // MARK: - Capsule
 
-    /// The capsule has its own, shorter wording for several things the panel
-    /// already says at length. It is a 250-point HUD read out of the corner of
-    /// an eye: at the text column's width, and with 11 pt as the floor below
-    /// which nothing in it may go, a line has room for about eighteen
-    /// characters. The panel keeps the full sentences.
+    /// The capsule's wording is short on purpose. It is a 280-point HUD read
+    /// out of the corner of an eye: at the text column's width, and with 11 pt
+    /// as the floor below which nothing in it may go, a line has room for about
+    /// eighteen characters, and every line here was written to fit.
     static var capsuleAccessibility: String { t("capsule.accessibility") }
     static var capsuleCancelHint: String { t("capsule.cancelHint") }
     static var capsuleListening: String { t("capsule.recording.title") }
@@ -133,20 +111,23 @@ nonisolated enum L {
     static var capsuleCancelledTitle: String { t("capsule.cancelled.title") }
     static var capsuleCancelledSubtitle: String { t("capsule.cancelled.subtitle") }
 
-    // MARK: - Recording list
+    // MARK: - Recordings
 
-    static var recordingsTitle: String { t("recordings.title") }
     static var recordingStatusPending: String { t("recording.status.pending") }
     static var recordingStatusSending: String { t("recording.status.sending") }
     static var recordingStatusSent: String { t("recording.status.sent") }
     static var recordingStatusFailed: String { t("recording.status.failed") }
     static var recordingResend: String { t("recording.resend") }
-    static func recordingAttempt(_ attempt: Int, of total: Int) -> String {
-        t("recording.attempt", attempt, total)
+
+    // MARK: - The status item's menu
+
+    /// "Last record: 0:42 — Sent". Both halves arrive already formatted, so a
+    /// translator can reorder them.
+    static func menuLastRecord(_ length: String, _ status: String) -> String {
+        t("menu.lastRecord", length, status)
     }
-
-    // MARK: - Footer
-
+    static var menuNoRecordings: String { t("menu.noRecordings") }
+    static var menuAbout: String { t("menu.about") }
     static var actionSettings: String { t("action.settings") }
     static var actionQuit: String { t("action.quit") }
 

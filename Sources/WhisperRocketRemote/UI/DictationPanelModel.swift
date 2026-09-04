@@ -41,7 +41,6 @@ final class DictationPanelModel: PanelModelProviding {
     var hostReachable: Bool? { controller.hostReachable }
 
     var level: Double { controller.levelMonitor.level }
-    var peak: Double { controller.levelMonitor.peak }
     var elapsed: TimeInterval { controller.levelMonitor.elapsed }
 
     var countdown: Int? { controller.countdown }
@@ -72,10 +71,6 @@ final class DictationPanelModel: PanelModelProviding {
         // `problem` already carries the phase guard and the retry verdict.
         guard let problem, problem.isRetryable else { return nil }
         return controller.lastFailure?.recordingID
-    }
-
-    var shortcutDescription: String? {
-        KeyboardShortcuts.getShortcut(for: .toggleDictation)?.description
     }
 
     func toggleRecording() {

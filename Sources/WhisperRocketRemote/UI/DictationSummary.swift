@@ -1,7 +1,7 @@
 import Foundation
 import WRNetwork
 
-/// What the panel acknowledges after a successful dictation.
+/// What the capsule acknowledges after a successful dictation.
 ///
 /// Note what is *not* here: the transcribed text. Showing it would turn a
 /// glance into a read, and the text is already on the clipboard and (usually)

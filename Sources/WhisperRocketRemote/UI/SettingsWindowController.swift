@@ -4,7 +4,7 @@ import SwiftUI
 /// The settings window.
 ///
 /// A plain `NSWindow`, not a SwiftUI `Settings` scene: the app's life cycle is
-/// AppKit (`main.swift` + delegate), because the panel needs a window type
+/// AppKit (`main.swift` + delegate), because the capsule needs a window type
 /// SwiftUI cannot express. The window is built on first use and reused, so
 /// reopening it does not lose what was half-typed in the token field.
 ///

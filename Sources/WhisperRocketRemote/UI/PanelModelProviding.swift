@@ -2,16 +2,17 @@ import Foundation
 import Observation
 import WRCore
 
-/// Everything the panel reads, and the four things it can ask for.
+/// Everything the capsule and the status item's menu read, and the three
+/// things they can ask for.
 ///
 /// This is the F4↔F3 contract. `DictationController` conforms to it; the UI
 /// never sees the controller's own type, and the UI was built and exercised
 /// against ``MockPanelModel`` before the controller existed.
 ///
 /// `Observable` is a refinement rather than a nicety: SwiftUI's observation
-/// tracking is what redraws the panel, and requiring it here means a conforming
-/// type that forgot `@Observable` fails to compile instead of quietly freezing
-/// the meter.
+/// tracking is what redraws the capsule, and requiring it here means a
+/// conforming type that forgot `@Observable` fails to compile instead of
+/// quietly freezing the meter.
 @MainActor
 protocol PanelModelProviding: AnyObject, Observable {
     /// What the panel is showing. Every visual stage derives from this alone.
@@ -25,8 +26,6 @@ protocol PanelModelProviding: AnyObject, Observable {
 
     /// Smoothed 0…1 microphone level, straight from `AudioLevelMonitor`.
     var level: Double { get }
-    /// Smoothed 0…1 peak with a slow fall-back, for the peak marker.
-    var peak: Double { get }
     /// Seconds captured so far, from the sample-accurate frame count.
     var elapsed: TimeInterval { get }
 
@@ -39,7 +38,8 @@ protocol PanelModelProviding: AnyObject, Observable {
     /// Usually `UploadPlan.maxAttempts`.
     var maxAttempts: Int { get }
 
-    /// The ring, **newest first** — the order the list renders in.
+    /// The ring, **newest first**. The ring holds one entry now, so `first` is
+    /// the menu's "Last record".
     var recordings: [RecordingMeta] { get }
     /// Drives the red dot on the menu-bar icon.
     var hasFailedRecordings: Bool { get }
@@ -55,10 +55,6 @@ protocol PanelModelProviding: AnyObject, Observable {
     /// in it would fail again the same way, and offering a button that cannot
     /// work is worse than offering none.
     var failedRecordingID: UUID? { get }
-
-    /// The current hotkey as a human-readable string ("⌘⇧Space"), or `nil` when
-    /// none is set. Shown in the idle hint.
-    var shortcutDescription: String? { get }
 
     /// Start or stop a recording — the same thing the hotkey does.
     func toggleRecording()

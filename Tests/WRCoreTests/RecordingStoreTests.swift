@@ -63,9 +63,26 @@ import Testing
 
     // MARK: - The ring
 
-    @Test func afourthRecordingEvictsTheOldestEntryAndItsAudio() throws {
+    @Test func theDefaultRingHoldsOnlyTheLastRecording() throws {
         let directory = try makeDirectory()
         let store = try RecordingStore(directory: directory)
+        #expect(store.capacity == 1)
+
+        let first = try store.reserve()
+        try writeAudio(store, first)
+        // Even a *sent* recording is pushed out: one slot means the last one.
+        try store.markSent(id: first.meta.id)
+        let second = try store.reserve()
+        try writeAudio(store, second)
+
+        #expect(store.recordings.map(\.id) == [second.meta.id])
+        #expect(!FileManager.default.fileExists(atPath: first.fileURL.path))
+        #expect(try audioFileNames(in: directory) == [second.meta.fileName])
+    }
+
+    @Test func afourthRecordingEvictsTheOldestEntryAndItsAudio() throws {
+        let directory = try makeDirectory()
+        let store = try RecordingStore(directory: directory, capacity: 3)
 
         var reservations: [RecordingStore.Reservation] = []
         for index in 0..<4 {
@@ -82,7 +99,7 @@ import Testing
 
     @Test func aSentRecordingKeepsItsSlotUntilAgeEvictsIt() throws {
         let directory = try makeDirectory()
-        let store = try RecordingStore(directory: directory)
+        let store = try RecordingStore(directory: directory, capacity: 3)
         let first = try store.reserve()
         try writeAudio(store, first)
 
@@ -104,10 +121,12 @@ import Testing
 
     @Test func theRingSizeIsConfigurable() throws {
         let directory = try makeDirectory()
-        let store = try RecordingStore(directory: directory, capacity: 1)
-        try writeAudio(store, try store.reserve())
-        try writeAudio(store, try store.reserve())
-        #expect(store.recordings.count == 1)
+        // Any size but the default, or this proves nothing.
+        let store = try RecordingStore(directory: directory, capacity: 2)
+        for _ in 0..<3 {
+            try writeAudio(store, try store.reserve())
+        }
+        #expect(store.recordings.count == 2)
     }
 
     // MARK: - Status
@@ -168,7 +187,7 @@ import Testing
         let directory = try makeDirectory()
         var ids: [UUID] = []
         do {
-            let store = try RecordingStore(directory: directory)
+            let store = try RecordingStore(directory: directory, capacity: 3)
             for index in 0..<3 {
                 let reservation = try store.reserve(createdAt: Date(timeIntervalSince1970: Double(index)))
                 try writeAudio(store, reservation)
@@ -177,7 +196,7 @@ import Testing
             try store.updateDuration(3, id: ids[1])
         }
 
-        let reloaded = try RecordingStore(directory: directory)
+        let reloaded = try RecordingStore(directory: directory, capacity: 3)
 
         #expect(reloaded.recordings.map(\.id) == ids)
         #expect(reloaded.recordings[1].durationSeconds == 3)
@@ -210,7 +229,7 @@ import Testing
         let kept: UUID
         let lost: UUID
         do {
-            let store = try RecordingStore(directory: directory)
+            let store = try RecordingStore(directory: directory, capacity: 3)
             let first = try store.reserve()
             try writeAudio(store, first)
             kept = first.meta.id
@@ -219,7 +238,7 @@ import Testing
             lost = try store.reserve().meta.id
         }
 
-        let reloaded = try RecordingStore(directory: directory)
+        let reloaded = try RecordingStore(directory: directory, capacity: 3)
 
         #expect(reloaded.recordings.map(\.id) == [kept])
         #expect(reloaded.recording(id: lost) == nil)
@@ -284,7 +303,7 @@ import Testing
 
     @Test func theIndexOnDiskMatchesWhatTheStoreReports() throws {
         let directory = try makeDirectory()
-        let store = try RecordingStore(directory: directory)
+        let store = try RecordingStore(directory: directory, capacity: 3)
         for _ in 0..<2 {
             try writeAudio(store, try store.reserve())
         }

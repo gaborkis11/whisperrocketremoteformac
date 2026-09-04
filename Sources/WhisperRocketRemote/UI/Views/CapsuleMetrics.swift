@@ -33,7 +33,7 @@ nonisolated enum CapsuleMetrics {
     ///
     /// **This is the line to change.** Everything below is derived from it, so
     /// a different capsule is a different literal here and nothing else.
-    static let defaultScale: Double = 0.45
+    static let defaultScale: Double = 0.50
 
     /// The scale in force.
     ///

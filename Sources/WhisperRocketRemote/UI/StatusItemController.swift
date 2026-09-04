@@ -1,6 +1,6 @@
 import AppKit
 
-/// The menu-bar item: one rocket, four states, one click.
+/// The menu-bar item: one rocket, four states, one menu.
 ///
 /// The image is rebuilt whenever the state *or the menu bar's appearance*
 /// changes. The appearance part matters because the badged image cannot be a
@@ -12,17 +12,13 @@ import AppKit
 final class StatusItemController {
     private let statusItem: NSStatusItem
     private var appearanceObservation: NSKeyValueObservation?
-    /// Handed the button it was clicked on, so the caller can position a panel
-    /// under it without having to reach back into this object during its own
-    /// initialisation.
-    private let onActivate: (NSStatusBarButton?) -> Void
 
     /// Filled while the microphone is open or an upload is in flight.
     private(set) var style: StatusItemIcon.Style = .outline
     /// The red dot: at least one recording failed and is waiting for the user.
     private(set) var showsBadge = false
 
-    /// The panel hangs off this. `nil` only if AppKit refused us an item.
+    /// The capsule hangs off this. `nil` only if AppKit refused us an item.
     var button: NSStatusBarButton? { statusItem.button }
 
     /// Whether the *menu bar* is dark right now, which is not the same question
@@ -31,16 +27,14 @@ final class StatusItemController {
         statusItem.button?.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
     }
 
-    init(onActivate: @escaping (NSStatusBarButton?) -> Void) {
-        self.onActivate = onActivate
+    init(menu: NSMenu) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        // AppKit tracks the click itself once the item has a menu: left and
+        // right both open it, the highlight is the system's, and nothing here
+        // needs an action.
+        statusItem.menu = menu
 
         if let button = statusItem.button {
-            button.target = self
-            button.action = #selector(buttonClicked)
-            // Right-click should open the panel too: there is no menu behind it,
-            // and a dead right-click reads as a broken app.
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             appearanceObservation = button.observe(\.effectiveAppearance) { [weak self] _, _ in
                 MainActor.assumeIsolated {
                     // Only the badged composite depends on the appearance; the
@@ -69,9 +63,5 @@ final class StatusItemController {
             appearance: button.effectiveAppearance
         )
         button.toolTip = showsBadge ? L.statusItemAccessibilityFailed : L.statusItemAccessibility
-    }
-
-    @objc private func buttonClicked() {
-        onActivate(statusItem.button)
     }
 }

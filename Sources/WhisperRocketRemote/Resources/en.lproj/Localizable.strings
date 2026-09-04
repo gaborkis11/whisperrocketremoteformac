@@ -5,34 +5,19 @@
 "statusItem.accessibility" = "WhisperRocket Remote";
 "statusItem.accessibility.failed" = "WhisperRocket Remote — a recording needs attention";
 
-/* MARK: Panel chrome */
-"app.name" = "WhisperRocket";
-"status.idle" = "Ready";
+/* MARK: Phase words */
 "status.recording" = "Recording";
-"status.sending" = "Sending";
 "status.done" = "Done";
-"status.failed" = "Didn’t work";
 
-/* MARK: Idle */
-"idle.hint.shortcut" = "Press %@ to dictate";
-"idle.hint.noShortcut" = "Set a shortcut in Settings to dictate from anywhere";
-"action.startRecording" = "Start recording";
+/* MARK: Actions */
 "action.stopRecording" = "Stop";
-
-/* MARK: Recording */
-"recording.hint" = "Press the shortcut again to stop";
-"storedMode.title" = "Host unreachable — stored mode";
-"storedMode.detail" = "Keep talking. The recording is saved and you can send it later.";
-"countdown.autoStop" = "Stops automatically in %d s";
 
 /* MARK: Sending */
 "sending.title" = "Sending to the host…";
-"sending.attempt" = "Attempt %1$d of %2$d";
 
 /* MARK: Done */
 "done.typed" = "Typed in";
 "done.clipboard" = "Copied to the clipboard";
-"done.composed" = "Composed reply";
 "done.characters" = "%d characters";
 "done.reason.autoPasteOff" = "Auto-typing is off, so it stayed on the clipboard.";
 "done.reason.accessibility" = "No Accessibility permission, so it stayed on the clipboard.";
@@ -40,9 +25,6 @@
 "done.reason.focus.unknown" = "The focus moved elsewhere mid-dictation, so nothing was typed.";
 
 /* MARK: Failure */
-"failed.hostSaid" = "The host said:";
-"failed.kept" = "The recording is safe — you can send it again.";
-
 "error.title.generic" = "Didn’t work";
 "error.title.token" = "Wrong token";
 "error.title.noSpeech" = "No speech in there";
@@ -83,16 +65,17 @@
 "capsule.cancelled.title" = "Cancelled";
 "capsule.cancelled.subtitle" = "Nothing was sent";
 
-/* MARK: Recording list */
-"recordings.title" = "Recordings";
+/* MARK: Recordings */
 "recording.status.pending" = "Waiting";
 "recording.status.sending" = "Sending";
 "recording.status.sent" = "Sent";
 "recording.status.failed" = "Failed";
 "recording.resend" = "Send again";
-"recording.attempt" = "%1$d/%2$d";
 
-/* MARK: Footer */
+/* MARK: The status item's menu */
+"menu.lastRecord" = "Last record: %1$@ — %2$@";
+"menu.noRecordings" = "No recordings yet";
+"menu.about" = "About WhisperRocket Remote";
 "action.settings" = "Settings…";
 "action.quit" = "Quit";
 

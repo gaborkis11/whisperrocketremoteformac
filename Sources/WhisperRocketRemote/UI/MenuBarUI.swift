@@ -6,9 +6,10 @@ import SwiftUI
 /// The whole user interface, behind one object.
 ///
 /// The app delegate creates this and hands it the orchestrator; from there the
-/// UI runs itself. It owns the status item, the panel and the settings window,
-/// and it is the only thing that watches the model for the *structural*
-/// changes — the phase, the badge, the list — that have to move AppKit around.
+/// UI runs itself. It owns the status item and its menu, the capsule, and the
+/// settings and About windows, and it is the only thing that watches the model
+/// for the *structural* changes — the phase, the badge — that have to move
+/// AppKit around.
 ///
 /// It deliberately does **not** watch the level or the elapsed time. Those
 /// change thirty times a second, and SwiftUI already redraws the meter from
@@ -28,9 +29,10 @@ final class MenuBarUI {
     /// through it: the property access still runs the `@Observable` getter.
     private let panelModel: any PanelModelProviding
     private let statusItem: StatusItemController
-    private let panelController: PanelController
+    private let statusMenu: StatusMenuController
     private let capsuleController: CapsulePanelController
     private let settingsWindow: SettingsWindowController
+    private let aboutWindow = AboutWindowController()
 
     /// Raised by Escape, lowered when the capsule has finished fading. The
     /// capsule reads it as one more stage; nothing else in the app knows a
@@ -73,27 +75,9 @@ final class MenuBarUI {
         }
         self.settingsWindow = settingsWindow
 
-        // A box, because the panel controller and the view that resizes it have
-        // to be built in the same breath and each needs the other.
-        let controllerBox = PanelControllerBox()
-        let hosting = NSHostingView(
-            rootView: PanelView(
-                model: panelModel,
-                onSettings: { settingsWindow.show() },
-                onQuit: { NSApp.terminate(nil) },
-                onContentSize: { size in
-                    controllerBox.controller?.resize(to: size, animated: true)
-                }
-            )
-        )
-        hosting.sizingOptions = [.minSize, .intrinsicContentSize]
-        panelController = PanelController(contentView: hosting)
-        controllerBox.controller = panelController
-
-        // The capsule: the live display, and the only one the hotkey opens.
-        // Built here in the generic `init` for the same reason the panel is —
-        // the concrete model type has to reach the view, and this class must
-        // not become generic.
+        // The capsule: the live display, and the only window the hotkey opens.
+        // Built here in the generic `init` because the concrete model type has
+        // to reach the view while this class must not become generic.
         let cancelFlash = CapsuleCancelFlash()
         self.cancelFlash = cancelFlash
         capsuleController = CapsulePanelController(
@@ -102,26 +86,28 @@ final class MenuBarUI {
             )
         )
 
-        // The status item hands its own button to the callback, so the panel
-        // can be positioned under it without this object having to exist yet.
-        let panelController = self.panelController
+        // The menu is the whole click now. It is built before the status item
+        // because the item wants it at birth: AppKit only tracks the click
+        // itself for an item that already has a menu.
         let capsuleController = self.capsuleController
-        statusItem = StatusItemController { [weak panelController, weak capsuleController] button in
-            // Never both at once: the panel is what a click asks for, so the
-            // capsule gets out of its way.
-            capsuleController?.hide()
-            panelController?.toggle(below: button)
-        }
+        let aboutWindow = self.aboutWindow
+        statusMenu = StatusMenuController(
+            model: panelModel,
+            onWillOpen: { [weak capsuleController] in
+                // Never both at once: the menu is what a click asks for, so the
+                // capsule gets out of its way.
+                capsuleController?.hide()
+            },
+            onSettings: { settingsWindow.show() },
+            onAbout: { aboutWindow.show() }
+        )
+        statusItem = StatusItemController(menu: statusMenu.menu)
 
         applyPhase(panelModel.phase, force: true)
         startObserving()
     }
 
     // MARK: - Commands
-
-    func showPanel() {
-        panelController.show(below: statusItem.button)
-    }
 
     /// Only the probes open the capsule by hand; a person gets it by dictating.
     func showCapsule() {
@@ -137,19 +123,10 @@ final class MenuBarUI {
         settingsWindow.close()
     }
 
-    /// The panel's screen rectangle, for the probes' screenshots.
-    var panelFrameInScreen: NSRect { panelController.frameInScreen }
-
-    /// Draws the *live* panel — vibrancy aside, exactly what is on screen,
-    /// mid-animation — into a bitmap, for the probes.
+    /// The capsule's screen rectangle, and its live pixels, for the probes.
     ///
     /// This is an in-process draw of our own window, so unlike `screencapture`
     /// it needs no Screen Recording permission.
-    func capturePanel() -> NSBitmapImageRep? {
-        panelController.capture()
-    }
-
-    /// The capsule's screen rectangle, and its live pixels, for the probes.
     var capsuleFrameInScreen: NSRect { capsuleController.frameInScreen }
     var isCapsuleVisible: Bool { capsuleController.isVisible }
 
@@ -199,11 +176,10 @@ final class MenuBarUI {
         withObservationTracking {
             // Exactly the properties that move AppKit. Anything read here wakes
             // this observer, so the meter's `level` must stay out of it.
+            // The menu builds itself when it is asked for, so `recordings` is
+            // no longer a reason to wake anything up.
             _ = panelModel.phase
             _ = panelModel.hasFailedRecordings
-            _ = panelModel.recordings
-            _ = panelModel.summary
-            _ = panelModel.problem
         } onChange: { [weak self] in
             // `onChange` runs *before* the value is written, so the new state is
             // only readable after a hop.
@@ -226,9 +202,6 @@ final class MenuBarUI {
                 showsBadge: panelModel.hasFailedRecordings
             )
         }
-        // The window follows the content by itself: `PanelView` reports its own
-        // settled size, which is the only measurement that is not racing
-        // SwiftUI's update.
     }
 
     private func applyPhase(_ phase: DictationPhase, force: Bool) {
@@ -236,10 +209,6 @@ final class MenuBarUI {
             style: phase.wantsFilledStatusIcon ? .filled : .outline,
             showsBadge: panelModel.hasFailedRecordings
         )
-
-        // A stray click must not close the panel out from under something that
-        // is still running.
-        panelController.isPinnedOpen = phase.holdsPanelOpen
 
         // Before the `force` guard, so the invariant holds from the first
         // moment: Escape is registered *if and only if* a recording is running.
@@ -252,16 +221,6 @@ final class MenuBarUI {
         }
 
         guard !force else { return }
-
-        // The panel no longer opens itself when a recording starts — the
-        // capsule does that now. It keeps every other habit it had, including
-        // getting out of the way after an acknowledgement, for the case where
-        // it was already open when the dictation began.
-        if phase.dismissesItself {
-            panelController.scheduleAutoClose(after: PanelMetrics.doneDismissDelay)
-        } else {
-            panelController.cancelAutoClose()
-        }
 
         applyCapsuleStage(for: phase)
     }
@@ -284,14 +243,17 @@ final class MenuBarUI {
         case .recording:
             // Starting a recording from the hotkey has to bring *something*
             // with it — that is the feedback the whole app exists to provide.
-            // Unless the big panel is already open: two windows saying the same
-            // thing at once is one too many.
-            if !panelController.isVisible {
-                capsuleController.show(below: statusItem.button)
-            }
+            capsuleController.show(below: statusItem.button)
 
         case .sending, .failed:
             capsuleController.cancelAutoClose()
+            // A resend from the menu enters `.sending` without ever passing
+            // through `.recording`, and the panel that used to report it is
+            // gone: without this, "Send again" would answer with nothing but a
+            // filled menu-bar rocket.
+            if !capsuleController.isVisible {
+                capsuleController.show(below: statusItem.button)
+            }
 
         case .done:
             capsuleController.scheduleAutoClose(

@@ -8,7 +8,7 @@ import WRNetwork
 /// The one object that owns the dictation flow: capture engine, recording ring,
 /// both network clients, settings, keychain, sounds and auto-typing.
 ///
-/// Everything else — the status item, the panel, the recording list — only
+/// Everything else — the status item, the capsule, the menu — only
 /// reads the observable state below. The two little state machines the plan
 /// calls for live here in their WRCore form: `RecorderState` for the capture,
 /// and per-recording upload state inside `RecordingStore`.
@@ -165,7 +165,7 @@ final class DictationController {
 
     var isRecording: Bool { recorderState.isRecording }
     /// True while a recording or an upload is in flight — what `--flow-probe`
-    /// waits on, and what the panel uses to keep itself open.
+    /// waits on, and what the capsule uses to keep itself open.
     var isBusy: Bool {
         recorderState.isRecording || uploadTask != nil || !queue.isEmpty
     }
@@ -294,7 +294,7 @@ final class DictationController {
         } catch {
             // The slot is already in the ring and its audio never happened. A
             // failed entry is the honest thing to show: the user pressed the
-            // key and got nothing, and the panel says why.
+            // key and got nothing, and the capsule says why.
             try? store.markFailed(id: reservation.meta.id)
             refreshRecordings()
             fail(FailureInfo(recordingID: reservation.meta.id, problem: .capture(error.message)))
@@ -480,16 +480,10 @@ final class DictationController {
         enqueue(id)
     }
 
-    func resendAllFailed() {
-        for meta in recordings where meta.status == .failed {
-            resend(id: meta.id)
-        }
-    }
-
     private func enqueue(_ id: UUID) {
         queue.append(id)
         // Set here rather than in `upload`: the queue drains on a Task, so the
-        // panel would otherwise still read `.recording` for a turn after the
+        // capsule would otherwise still read `.recording` for a turn after the
         // microphone had already been closed.
         phase = .sending
         pump()
@@ -661,7 +655,7 @@ final class DictationController {
 
     var recordingsDirectory: URL { store.directory }
 
-    /// Puts the panel back to rest after a finished or failed dictation.
+    /// Puts the UI back to rest after a finished or failed dictation.
     func acknowledge() {
         guard phase == .done || phase == .failed else { return }
         phase = .idle

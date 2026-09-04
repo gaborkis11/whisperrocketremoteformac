@@ -9,17 +9,18 @@ import WRCore
 /// None of them touches the microphone, the network or the user's settings:
 ///
 /// * `--ui-probe [scenario] [--capture <dir>] [--seconds N]` builds the real
-///   status item, the real panel and the real settings window against
+///   status item, the real capsule and the real settings window against
 ///   ``MockPanelModel`` / ``MockSettingsModel`` and plays a scenario. This is
 ///   how the choreography was developed and how it is checked: not by reasoning
 ///   about the animation, by watching it.
-/// * `--render-probe [directory]` writes a still of every stage, light and
-///   dark, plus the Reduce Motion branch.
-/// * `--anim-probe [directory]` writes the sending stage at three *chosen*
-///   instants, light and dark, plus the Reduce Motion branch — the only way to
-///   show that a 60 fps animation actually animates without recording the
+/// * `--render-probe [directory]` writes the settings form, light and dark.
+/// * `--anim-probe [directory]` writes the capsule's sending stage at three
+///   *chosen* instants, light and dark, plus the Reduce Motion branch — the only
+///   way to show that a 60 fps animation actually animates without recording the
 ///   screen. It works because the whole scene is a pure function of a clock
 ///   (see ``CruiseInstant``), so a frame can be asked for by name.
+/// * `--about-probe [directory]` writes the About window's contents, light and
+///   dark.
 /// * `--capsule-probe [directory]` writes every stage of the capsule HUD, over
 ///   a light and over a dark backdrop — the pill is always dark, so what the two
 ///   backdrops test is how it sits on top of what the user is actually looking
@@ -33,8 +34,8 @@ import WRCore
 ///   as a global hotkey at all — the one thing Escape-to-cancel depends on that
 ///   fails silently. Run it against a *second* copy of this app that is holding
 ///   Escape and it answers `-9878`, which is how the arming is proved end to end.
-/// * `--show-panel` is the odd one out: it opens the panel against the **real**
-///   controller (see ``openPanelIfRequested(_:arguments:)``).
+/// * `--show-settings` is the odd one out: it opens the settings window against
+///   the **real** controller (see ``openSettingsIfRequested(_:arguments:)``).
 ///
 /// Every image is drawn in-process, never with `screencapture` — that would ask
 /// the person at the keyboard for a Screen Recording permission, which no
@@ -57,7 +58,7 @@ enum UIProbes {
         initial: .init(.space, modifiers: [.command, .shift])
     )
 
-    /// Kept alive for the process's lifetime — the status item and the panel
+    /// Kept alive for the process's lifetime — the status item and the capsule
     /// die with it.
     private nonisolated(unsafe) static var session: (ui: MenuBarUI, model: MockPanelModel)?
 
@@ -87,6 +88,10 @@ enum UIProbes {
             let directory = arguments.dropFirst(index + 1).first
             exit(runCapsuleProbe(directory: directory))
         }
+        if let index = arguments.firstIndex(of: "--about-probe") {
+            let directory = arguments.dropFirst(index + 1).first
+            exit(runAboutProbe(directory: directory))
+        }
         guard let index = arguments.firstIndex(of: "--ui-probe") else { return false }
 
         let argument = arguments.dropFirst(index + 1).first { !$0.hasPrefix("--") }
@@ -108,57 +113,6 @@ enum UIProbes {
             captureAfter: seconds(named: "--capture-after", in: arguments) ?? 1.6
         )
         return true
-    }
-
-    // MARK: - --show-panel (the real controller)
-
-    /// `--show-panel [--capture <dir>] [--seconds N]`
-    ///
-    /// Opens the panel against the **real** `DictationController`, a beat after
-    /// launch, and optionally draws it to a PNG. It exists because the one thing
-    /// `--ui-probe` cannot prove is the integration itself: the mock is not the
-    /// controller, and clicking a menu-bar item is not something an automated
-    /// check can do (`screencapture` and synthetic clicks both need permissions
-    /// a probe must not ask a person for).
-    ///
-    /// It starts nothing: no microphone, no upload, no settings written.
-    static func openPanelIfRequested(_ ui: MenuBarUI, arguments: [String] = CommandLine.arguments) {
-        guard arguments.contains("--show-panel") else { return }
-        let directory = value(named: "--capture", in: arguments)
-        let quitAfter = seconds(named: "--seconds", in: arguments)
-
-        Task { @MainActor in
-            // F0's lesson again: the status item's button frame is wrong for the
-            // first ~600 ms, and the panel hangs off that frame.
-            try? await Task.sleep(for: .milliseconds(800))
-            ui.showPanel()
-            let frame = ui.panelFrameInScreen
-            log("show-panel", "panel visible at \(Int(frame.minX)),\(Int(frame.minY)) "
-                + "\(Int(frame.width))×\(Int(frame.height)) — real controller")
-
-            log("show-panel", "status item: \(ui.statusItemDescription)")
-
-            if let directory {
-                try? await Task.sleep(for: .milliseconds(500))
-                let url = URL(fileURLWithPath: directory)
-                try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-                write(ui.capturePanel(), to: url, named: "live-panel-real-controller.png", tag: "show-panel")
-                // The glyph the menu bar is wearing at this exact moment — the
-                // one thing the panel capture cannot show.
-                write(
-                    ui.captureStatusItemIcon(),
-                    to: url,
-                    named: "live-status-item-real-controller.png",
-                    tag: "show-panel"
-                )
-            }
-
-            if let quitAfter {
-                try? await Task.sleep(for: .seconds(quitAfter))
-                log("show-panel", "auto-quit")
-                NSApp.terminate(nil)
-            }
-        }
     }
 
     // MARK: - --show-settings (the real controller)
@@ -228,7 +182,7 @@ enum UIProbes {
         session = (ui, panelModel)
 
         log("ui-probe", "scenario=\(scenario.rawValue) — status item installed")
-        log("ui-probe", "click the menu-bar rocket to toggle the panel; “\(L.actionSettings)” opens the real settings window")
+        log("ui-probe", "click the menu-bar rocket for the menu; “\(L.actionSettings)” and “\(L.menuAbout)” open real windows")
 
         Task { @MainActor in
             // F0's lesson: the status item's button frame is wrong for the first
@@ -236,17 +190,12 @@ enum UIProbes {
             // before then, so the probe waits exactly as the real app waits for
             // a user's click.
             try? await Task.sleep(for: .milliseconds(700))
-            // The panel is deliberately *not* opened: the capsule is what a
-            // recording brings up now, and a probe that opened the panel first
-            // would suppress the very thing it is meant to show (the two never
-            // appear at once). Click the rocket to see the panel.
             panelModel.play(scenario)
             try? await Task.sleep(for: .milliseconds(500))
             // Scenarios that start mid-flow (`sending`, `failed`, …) never pass
             // through `.recording`, which is the only thing that opens the
-            // capsule in the app — a resend must not throw a HUD over the panel
-            // the user just clicked in. The probe opens it by hand so those
-            // stages can still be watched live.
+            // capsule in the app. The probe opens it by hand so those stages can
+            // still be watched live.
             if !ui.isCapsuleVisible, scenario != .idle, scenario != .full {
                 ui.showCapsule()
                 try? await Task.sleep(for: .milliseconds(200))
@@ -257,7 +206,7 @@ enum UIProbes {
                 log("ui-probe", "capsule visible at \(Int(frame.minX)),\(Int(frame.minY)) "
                     + "\(Int(frame.width))×\(Int(frame.height))")
             } else {
-                log("ui-probe", "no capsule for this scenario — click the rocket for the panel")
+                log("ui-probe", "no capsule for this scenario — click the rocket for the menu")
             }
             // Armed says a task exists; the Carbon status says the task actually
             // got the key. `eventHotKeyExistsErr` here is the *good* answer.
@@ -312,19 +261,16 @@ enum UIProbes {
                 tag: "ui-probe"
             )
         }
-
-        // Then the panel, which now only ever opens because someone asked for it.
-        ui.showPanel()
+        // The glyph the menu bar is wearing at this exact moment — the one thing
+        // no window capture can show.
+        write(
+            ui.captureStatusItemIcon(),
+            to: directory,
+            named: "live-status-item-\(scenario.rawValue).png",
+            tag: "ui-probe"
+        )
 
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(400))
-            write(
-                ui.capturePanel(),
-                to: directory,
-                named: "live-panel-\(scenario.rawValue).png",
-                tag: "ui-probe"
-            )
-
             ui.showSettings()
             try? await Task.sleep(for: .milliseconds(600))
             guard let rep = ui.captureSettings(),
@@ -427,73 +373,22 @@ enum UIProbes {
 
     // MARK: - --render-probe
 
-    /// Renders the panel to PNG in every stage, in light and in dark.
+    /// Renders the settings form to PNG, light and dark.
     ///
     /// `screencapture` needs Screen Recording permission, which an automated
     /// check cannot grant itself; `ImageRenderer` needs nothing and draws the
-    /// exact SwiftUI tree. What it cannot show is the vibrancy behind the panel
-    /// and the animations — those are what the live `--ui-probe` is for — so the
-    /// images are composited over the two backgrounds a `.hudWindow` material
-    /// approximates, and read as layout and colour checks, not as the final look.
+    /// exact SwiftUI tree. What it cannot show is the live behaviour — that is
+    /// what `--ui-probe` is for — so these read as layout and colour checks,
+    /// not as the final look.
+    ///
+    /// The panel it used to photograph is gone: the menu-bar item opens an
+    /// `NSMenu` now, and a menu is the system's picture, not ours.
     private static func runRenderProbe(directory: String?) -> Int32 {
         let base = URL(fileURLWithPath: directory ?? FileManager.default.currentDirectoryPath)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
 
-        let model = MockPanelModel(seedRecordings: false)
         let settingsModel = MockSettingsModel()
         var failures = 0
-
-        // `.cancelled` is left out with `.full`: it is a *capsule* state, and
-        // what the panel does with it is by definition `panel-idle`.
-        for scenario in UIProbeScenario.allCases where scenario != .full && scenario != .cancelled {
-            model.snapshot(scenario)
-            for isDark in [false, true] {
-                let name = "panel-\(scenario.rawValue)-\(isDark ? "dark" : "light").png"
-                let view = PanelView(
-                    model: model,
-                    onSettings: {},
-                    onQuit: {},
-                    onContentSize: { _ in }
-                )
-                if write(view, to: base.appendingPathComponent(name), isDark: isDark) {
-                    log("render-probe", "wrote \(name)")
-                } else {
-                    log("render-probe", "FAILED to render \(name)")
-                    failures += 1
-                }
-            }
-        }
-
-        // Reduce Motion replaces the launch with a static rocket and the
-        // system's own indeterminate bar. `accessibilityReduceMotion` is a
-        // read-only environment value — a probe cannot fake it, and it must not
-        // change the real system setting — but every stage takes the flag as a
-        // plain parameter precisely so the branch can be rendered directly.
-        let reducedMotionStages: [(String, AnyView)] = [
-            ("reduced-motion-sending", AnyView(
-                SendingStageView(attempt: 2, maxAttempts: 3, reduceMotion: true)
-            )),
-            ("reduced-motion-recording", AnyView(
-                RecordingStageView(
-                    level: 0.62,
-                    peak: 0.78,
-                    elapsed: 47,
-                    countdown: 13,
-                    hostReachable: false,
-                    reduceMotion: true,
-                    onStop: {}
-                )
-            )),
-        ]
-        for (name, stage) in reducedMotionStages {
-            let framed = stage.frame(width: PanelMetrics.width - 2 * PanelMetrics.padding)
-            if write(framed, to: base.appendingPathComponent("\(name).png"), isDark: false) {
-                log("render-probe", "wrote \(name).png")
-            } else {
-                log("render-probe", "FAILED to render \(name).png")
-                failures += 1
-            }
-        }
 
         for isDark in [false, true] {
             let name = "settings-\(isDark ? "dark" : "light").png"
@@ -525,37 +420,25 @@ enum UIProbes {
     /// of the flame's ten-frame sawtooth, so the exhaust is visibly short, long
     /// and mid-length across the set, while the starfield has moved 45 pt
     /// between the first two and most of a lap by the third.
+    ///
+    /// The scene now lives in the **capsule's** lane rather than in a panel
+    /// stage, so what is photographed is the whole pill with the cruise inside
+    /// it — which is the only place a person will ever see this animation.
     private static func runAnimationProbe(directory: String?) -> Int32 {
         let base = URL(fileURLWithPath: directory ?? FileManager.default.currentDirectoryPath)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
 
-        // The rule the jokes live by, checked here as well as in
-        // `CruiseMessagesTests`: this probe is what a person looks at, so it
-        // should be the thing that says the pool is still legal.
-        let overlong = CruiseMessages.all.filter { $0.count > CruiseMessages.maxCharacters }
-        if overlong.isEmpty {
-            log("anim-probe", "\(CruiseMessages.all.count) jokes, longest "
-                + "\(CruiseMessages.all.map(\.count).max() ?? 0) chars "
-                + "(limit \(CruiseMessages.maxCharacters)) — OK")
-        } else {
-            log("anim-probe", "FAIL: over \(CruiseMessages.maxCharacters) chars: \(overlong)")
-            return 1
-        }
-
-        // The longest line in the pool goes on the last still, so the width rule
-        // is proved by eye and not only by arithmetic.
-        let longest = CruiseMessages.all.max { $0.count < $1.count } ?? ""
         let instants: [(name: String, instant: CruiseInstant)] = [
-            ("t0.00", CruiseInstant(time: 0.00, message: CruiseMessages.all[0])),
-            ("t0.15", CruiseInstant(time: 0.15, message: "Hold my coffee...")),
-            ("t1.55", CruiseInstant(time: 1.55, message: longest)),
+            ("t0.00", CruiseInstant(time: 0.00)),
+            ("t0.15", CruiseInstant(time: 0.15)),
+            ("t1.55", CruiseInstant(time: 1.55)),
         ]
 
         // The numbers behind the pictures, so the report can cite them rather
-        // than claim them.
+        // than claim them. The lane is the capsule's, not the panel's.
         let sceneSize = CGSize(
-            width: PanelMetrics.width - 2 * PanelMetrics.padding,
-            height: PanelMetrics.cruiseSceneHeight
+            width: CapsuleMetrics.laneWidth,
+            height: CapsuleMetrics.laneHeight
         )
         for (name, instant) in instants {
             let frame = CruiseRocketGeometry.frame(at: instant.time)
@@ -567,22 +450,22 @@ enum UIProbes {
             ))
         }
 
+        let model = MockPanelModel(seedRecordings: false)
+        model.snapshot(.sending)
+        let flash = CapsuleCancelFlash()
         var failures = 0
-        let width = PanelMetrics.width - 2 * PanelMetrics.padding
 
         for (name, instant) in instants {
             for isDark in [false, true] {
-                let file = "sending-\(name)-\(isDark ? "dark" : "light").png"
-                let stage = SendingStageView(
-                    attempt: 1,
-                    maxAttempts: UploadPlan.maxAttempts,
-                    reduceMotion: false,
-                    frozen: instant
+                let file = "capsule-sending-\(name)-\(isDark ? "dark" : "light").png"
+                let view = CapsuleView(
+                    model: model,
+                    flash: flash,
+                    frozenStage: .sending,
+                    frozenInstant: instant
                 )
-                .frame(width: width)
-
-                if write(stage, to: base.appendingPathComponent(file), isDark: isDark) {
-                    log("anim-probe", "wrote \(file) — “\(instant.message)”")
+                if write(view, to: base.appendingPathComponent(file), isDark: isDark) {
+                    log("anim-probe", "wrote \(file)")
                 } else {
                     log("anim-probe", "FAILED to render \(file)")
                     failures += 1
@@ -592,19 +475,17 @@ enum UIProbes {
 
         // Reduce Motion goes through the real branch — no frozen instant — so
         // what is rendered is what the setting actually produces: the clock
-        // stopped at `cruiseStillInstant`, and a joke drawn live from the pool.
+        // stopped at `CruiseMetrics.stillInstant`.
         for isDark in [false, true] {
-            let file = "sending-reduced-motion-\(isDark ? "dark" : "light").png"
-            let stage = SendingStageView(
-                attempt: 2,
-                maxAttempts: UploadPlan.maxAttempts,
-                reduceMotion: true,
-                frozen: nil
+            let file = "capsule-sending-reduced-motion-\(isDark ? "dark" : "light").png"
+            let view = CapsuleView(
+                model: model,
+                flash: flash,
+                frozenStage: .sending,
+                frozenReduceMotion: true
             )
-            .frame(width: width)
-
-            if write(stage, to: base.appendingPathComponent(file), isDark: isDark) {
-                log("anim-probe", "wrote \(file) — real Reduce Motion branch, joke picked live")
+            if write(view, to: base.appendingPathComponent(file), isDark: isDark) {
+                log("anim-probe", "wrote \(file) — real Reduce Motion branch")
             } else {
                 log("anim-probe", "FAILED to render \(file)")
                 failures += 1
@@ -612,6 +493,38 @@ enum UIProbes {
         }
 
         log("anim-probe", failures == 0 ? "PASS — \(base.path)" : "FAIL (\(failures) render(s))")
+        return failures == 0 ? 0 : 1
+    }
+
+    // MARK: - --about-probe
+
+    /// Photographs the About window's contents, light and dark.
+    ///
+    /// Offscreen, like every other still here: the window itself is a plain
+    /// `NSWindow`, and asking the screen for a picture of it would need a
+    /// permission a probe has no business requesting. Run from inside the built
+    /// bundle it shows the real icon and the real version; run from a bare
+    /// `swift build` binary it shows the fallback rocket and "Version dev",
+    /// which is the other half worth looking at.
+    private static func runAboutProbe(directory: String?) -> Int32 {
+        let base = URL(fileURLWithPath: directory ?? FileManager.default.currentDirectoryPath)
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+
+        log("about-probe", "bundle: \(Bundle.main.bundleURL.lastPathComponent)")
+        log("about-probe", AboutView.versionLine)
+
+        var failures = 0
+        for isDark in [false, true] {
+            let file = "about-\(isDark ? "dark" : "light").png"
+            if write(AboutView(), to: base.appendingPathComponent(file), isDark: isDark) {
+                log("about-probe", "wrote \(file)")
+            } else {
+                log("about-probe", "FAILED to render \(file)")
+                failures += 1
+            }
+        }
+
+        log("about-probe", failures == 0 ? "PASS — \(base.path)" : "FAIL (\(failures) render(s))")
         return failures == 0 ? 0 : 1
     }
 
@@ -691,8 +604,9 @@ enum UIProbes {
     }
 
     /// The sizes on the table, largest first, with the shipped one last so the
-    /// log ends on what is actually installed.
-    private static let capsuleSizeCandidates: [Double] = [0.60, 0.50, CapsuleMetrics.defaultScale]
+    /// log ends on what is actually installed. `0.45` is what F6.1 shipped —
+    /// keeping it here is what makes the step to 50 % visible side by side.
+    private static let capsuleSizeCandidates: [Double] = [0.60, 0.45, CapsuleMetrics.defaultScale]
 
     /// One recording still per candidate size, on the light backdrop only: what
     /// is being compared here is how much room the pill takes, and two backdrops
@@ -843,9 +757,8 @@ enum UIProbes {
 
     private static func write(_ view: some View, to url: URL, isDark: Bool) -> Bool {
         // The backdrop is part of the rendered view, not composited afterwards:
-        // the panel paints no background of its own (the vibrancy behind it
-        // does), so without one the light and dark renders would both come out
-        // on nothing.
+        // the views here paint no background of their own, so without one the
+        // light and dark renders would both come out on nothing.
         let backdrop = isDark ? Color(white: 0.17) : Color(white: 0.95)
 
         let renderer = ImageRenderer(
@@ -910,7 +823,7 @@ enum UIProbes {
             log("l10n-probe", "\(language): \(table.count) keys")
 
             // A sample that exercises a plain key, a %@ key and a %d key.
-            for key in ["status.recording", "idle.hint.shortcut", "countdown.autoStop"] {
+            for key in ["status.recording", "menu.lastRecord", "capsule.countdown"] {
                 let value = languageBundle.localizedString(forKey: key, value: "<missing>", table: nil)
                 log("l10n-probe", "  \(language)/\(key) = \(value)")
                 if value == "<missing>" { failures += 1 }
@@ -932,9 +845,10 @@ enum UIProbes {
         // And the path the app itself takes: the `L` accessors against the
         // bundle's own preferred localization.
         log("l10n-probe", "L.statusRecording = \(L.statusRecording)")
-        log("l10n-probe", "L.countdown(7) = \(L.countdown(7))")
-        log("l10n-probe", "L.sendingAttempt(2, of: 3) = \(L.sendingAttempt(2, of: 3))")
-        log("l10n-probe", "L.idleHint(⌘⇧Space) = \(L.idleHint(shortcut: "⌘⇧Space"))")
+        log("l10n-probe", "L.capsuleCountdown(7) = \(L.capsuleCountdown(7))")
+        log("l10n-probe", "L.capsuleAttempt(2, of: 3) = \(L.capsuleAttempt(2, of: 3))")
+        log("l10n-probe", "L.menuLastRecord = \(L.menuLastRecord("0:42", L.recordingStatusSent))")
+        log("l10n-probe", "L.menuAbout = \(L.menuAbout)")
         if L.statusRecording == "status.recording" {
             log("l10n-probe", "FAIL: L returned the key — the bundle did not resolve")
             failures += 1

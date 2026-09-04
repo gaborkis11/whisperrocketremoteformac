@@ -72,9 +72,13 @@ public final class RecordingStore {
     /// True while any entry needs the user's attention (the status-item badge).
     public var hasFailedRecordings: Bool { items.contains { $0.status == .failed } }
 
+    /// The ring holds **one** recording by default: the last one, resendable as
+    /// often as the user likes, and evicted the moment a new one starts. The
+    /// mechanism stays capacity-parameterised — the tests exercise it at 2 and 3
+    /// — but the app ships with a single slot.
     public init(
         directory: URL,
-        capacity: Int = 3,
+        capacity: Int = 1,
         fileExtension: String = "m4a",
         fileSystem: RecordingFileSystem = DiskFileSystem()
     ) throws {

@@ -5,34 +5,19 @@
 "statusItem.accessibility" = "WhisperRocket Remote";
 "statusItem.accessibility.failed" = "WhisperRocket Remote — egy felvétel elakadt";
 
-/* MARK: Panel */
-"app.name" = "WhisperRocket";
-"status.idle" = "Készen áll";
+/* MARK: Fázisnevek */
 "status.recording" = "Felvétel";
-"status.sending" = "Küldés";
 "status.done" = "Megvan";
-"status.failed" = "Nem sikerült";
 
-/* MARK: Alaphelyzet */
-"idle.hint.shortcut" = "Diktálás: %@";
-"idle.hint.noShortcut" = "Állíts be gyorsbillentyűt, és bárhonnan diktálhatsz";
-"action.startRecording" = "Felvétel indítása";
+/* MARK: Műveletek */
 "action.stopRecording" = "Leállítás";
-
-/* MARK: Felvétel */
-"recording.hint" = "A leállításhoz nyomd meg újra a gyorsbillentyűt";
-"storedMode.title" = "A host nem érhető el — tárolt mód";
-"storedMode.detail" = "Nyugodtan beszélj tovább. A felvétel megmarad, és később elküldheted.";
-"countdown.autoStop" = "%d mp múlva automatikusan leáll";
 
 /* MARK: Küldés */
 "sending.title" = "Küldés a hostnak…";
-"sending.attempt" = "%1$d. próbálkozás a %2$d-ből";
 
 /* MARK: Kész */
 "done.typed" = "Beírva";
 "done.clipboard" = "Vágólapra másolva";
-"done.composed" = "Fogalmazott válasz";
 "done.characters" = "%d karakter";
 "done.reason.autoPasteOff" = "Az automatikus beírás ki van kapcsolva, ezért csak a vágólapra került.";
 "done.reason.accessibility" = "Nincs Kisegítő lehetőségek engedély, ezért csak a vágólapra került.";
@@ -40,9 +25,6 @@
 "done.reason.focus.unknown" = "Közben elmozdult a fókusz, ezért nem írtam be sehová.";
 
 /* MARK: Hiba */
-"failed.hostSaid" = "A host üzenete:";
-"failed.kept" = "A felvétel megvan — újra elküldheted.";
-
 "error.title.generic" = "Nem sikerült";
 "error.title.token" = "Nem jó a token";
 "error.title.noSpeech" = "Nem volt benne beszéd";
@@ -83,16 +65,17 @@
 "capsule.cancelled.title" = "Megszakítva";
 "capsule.cancelled.subtitle" = "Semmi nem ment el";
 
-/* MARK: Felvétel-lista */
-"recordings.title" = "Felvételek";
+/* MARK: Felvételek */
 "recording.status.pending" = "Várakozik";
 "recording.status.sending" = "Küldés";
 "recording.status.sent" = "Elküldve";
 "recording.status.failed" = "Elakadt";
 "recording.resend" = "Újraküldés";
-"recording.attempt" = "%1$d/%2$d";
 
-/* MARK: Lábléc */
+/* MARK: A menüsor-ikon menüje */
+"menu.lastRecord" = "Utolsó felvétel: %1$@ — %2$@";
+"menu.noRecordings" = "Még nincs felvétel";
+"menu.about" = "A WhisperRocket Remote névjegye";
 "action.settings" = "Beállítások…";
 "action.quit" = "Kilépés";
 

@@ -10,9 +10,9 @@ import SwiftUI
 struct CruiseSceneView: View {
     /// Seconds into the flight.
     var time: Double
-    /// The most the rocket motif may be blown up. The default is the panel's;
-    /// the capsule's shorter band would otherwise let the rocket grow into it.
-    var rocketScaleCap: Double = PanelMetrics.cruiseRocketScale
+    /// The most the rocket motif may be blown up, so a short band cannot let it
+    /// grow into the words beside it.
+    var rocketScaleCap: Double = CruiseMetrics.rocketScale
 
     @Environment(\.colorScheme) private var colorScheme
 

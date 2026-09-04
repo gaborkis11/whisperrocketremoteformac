@@ -16,10 +16,10 @@ struct RocketCruiseView: View {
     var reduceMotion: Bool
     /// Set only by `--anim-probe`, to photograph a chosen frame. `nil` in the app.
     var frozen: CruiseInstant?
-    /// The band the scene gets. The panel's is the default; the capsule is
-    /// shorter and passes its own.
-    var height: Double = PanelMetrics.cruiseSceneHeight
-    var rocketScaleCap: Double = PanelMetrics.cruiseRocketScale
+    /// The band the scene gets — the capsule's lane, which is the only place
+    /// this is ever drawn.
+    var height: Double
+    var rocketScaleCap: Double = CruiseMetrics.rocketScale
 
     /// The flight's own zero. `@State`, so it is set when this view appears and
     /// the animation starts at the beginning of a send rather than partway
@@ -60,6 +60,6 @@ struct RocketCruiseView: View {
         if let frozen { return frozen.time }
         // Not zero: frame zero is the flame at its shortest, which makes a
         // still look like an engine that has just cut out.
-        return reduceMotion ? PanelMetrics.cruiseStillInstant : nil
+        return reduceMotion ? CruiseMetrics.stillInstant : nil
     }
 }
