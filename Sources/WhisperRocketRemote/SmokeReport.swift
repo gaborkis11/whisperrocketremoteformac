@@ -17,7 +17,9 @@ enum SmokeReport {
 
     static func emit(shortcut: KeyboardShortcuts.Shortcut?) {
         var lines = summary()
-        lines.append("hotkey: \(shortcut.map(String.init(describing:)) ?? "<unset>")")
+        // KeyboardShortcuts 3.x isolates Shortcut's CustomStringConvertible conformance
+        // to the main actor, so it cannot travel through nonisolated String(describing:).
+        lines.append("hotkey: \(shortcut?.description ?? "<unset>")")
         lines.append("path: \(Bundle.main.bundlePath)")
         for line in lines {
             print("[smoke] \(line)")

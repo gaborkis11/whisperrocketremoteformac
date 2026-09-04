@@ -7,7 +7,7 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [.macOS(.v15)],
     dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "1.10.0")
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.0.0")
     ],
     targets: [
         .target(name: "WRCore"),

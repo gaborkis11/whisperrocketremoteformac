@@ -5,7 +5,7 @@ import WRCore
 import WRNetwork
 
 extension KeyboardShortcuts.Name {
-    static let toggleDictation = Self("toggleDictation", default: .init(.space, modifiers: [.command, .shift]))
+    static let toggleDictation = Self("toggleDictation", initial: .init(.space, modifiers: [.command, .shift]))
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {

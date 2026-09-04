@@ -1,10 +1,8 @@
 import Foundation
 
-/// F0 placeholder — replaced by the real core logic (RecorderState, UploadPlan, …) in F1.
+/// Module identity for the F0 smoke report, which proves at runtime that the
+/// library actually linked into the signed bundle. Retire it together with
+/// `SmokeReport` once the real panel replaces the probe.
 public enum WRCore {
     public static let moduleName = "WRCore"
-
-    public static func greeting(for name: String) -> String {
-        "Hello, \(name)!"
-    }
 }
