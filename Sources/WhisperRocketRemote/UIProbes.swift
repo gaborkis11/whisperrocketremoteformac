@@ -1,6 +1,7 @@
 import AppKit
 import KeyboardShortcuts
 import SwiftUI
+import WRCore
 
 /// Command-line probes for the user interface.
 ///
@@ -13,6 +14,11 @@ import SwiftUI
 ///   about the animation, by watching it.
 /// * `--render-probe [directory]` writes a still of every stage, light and
 ///   dark, plus the Reduce Motion branch.
+/// * `--anim-probe [directory]` writes the sending stage at three *chosen*
+///   instants, light and dark, plus the Reduce Motion branch — the only way to
+///   show that a 60 fps animation actually animates without recording the
+///   screen. It works because the whole scene is a pure function of a clock
+///   (see ``CruiseInstant``), so a frame can be asked for by name.
 /// * `--icon-probe [directory]` renders the menu-bar rocket to PNG contact
 ///   sheets — idle, recording and badged, on a light and on a dark menu bar, at
 ///   1× through 8× — because an 18-point glyph cannot be judged any other way.
@@ -60,6 +66,10 @@ enum UIProbes {
         if let index = arguments.firstIndex(of: "--render-probe") {
             let directory = arguments.dropFirst(index + 1).first
             exit(runRenderProbe(directory: directory))
+        }
+        if let index = arguments.firstIndex(of: "--anim-probe") {
+            let directory = arguments.dropFirst(index + 1).first
+            exit(runAnimationProbe(directory: directory))
         }
         guard let index = arguments.firstIndex(of: "--ui-probe") else { return false }
 
@@ -433,6 +443,111 @@ enum UIProbes {
         }
 
         log("render-probe", failures == 0 ? "PASS" : "FAIL (\(failures) render(s))")
+        return failures == 0 ? 0 : 1
+    }
+
+    // MARK: - --anim-probe
+
+    /// Photographs the cruise animation, three frames at a time.
+    ///
+    /// A still of a moving picture proves nothing on its own — the honest
+    /// question is *does it move*, and the honest answer is three stills of the
+    /// same scene at three instants with the stars in three places. That is only
+    /// possible because ``CruiseSceneView`` takes its instant as a parameter
+    /// instead of reading a clock, so this probe can ask for frame 9 by name and
+    /// get the same frame every run, on any machine.
+    ///
+    /// The instants are chosen, not sampled: they land on three different points
+    /// of the flame's ten-frame sawtooth, so the exhaust is visibly short, long
+    /// and mid-length across the set, while the starfield has moved 45 pt
+    /// between the first two and most of a lap by the third.
+    private static func runAnimationProbe(directory: String?) -> Int32 {
+        let base = URL(fileURLWithPath: directory ?? FileManager.default.currentDirectoryPath)
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+
+        // The rule the jokes live by, checked here as well as in
+        // `CruiseMessagesTests`: this probe is what a person looks at, so it
+        // should be the thing that says the pool is still legal.
+        let overlong = CruiseMessages.all.filter { $0.count > CruiseMessages.maxCharacters }
+        if overlong.isEmpty {
+            log("anim-probe", "\(CruiseMessages.all.count) jokes, longest "
+                + "\(CruiseMessages.all.map(\.count).max() ?? 0) chars "
+                + "(limit \(CruiseMessages.maxCharacters)) — OK")
+        } else {
+            log("anim-probe", "FAIL: over \(CruiseMessages.maxCharacters) chars: \(overlong)")
+            return 1
+        }
+
+        // The longest line in the pool goes on the last still, so the width rule
+        // is proved by eye and not only by arithmetic.
+        let longest = CruiseMessages.all.max { $0.count < $1.count } ?? ""
+        let instants: [(name: String, instant: CruiseInstant)] = [
+            ("t0.00", CruiseInstant(time: 0.00, message: CruiseMessages.all[0])),
+            ("t0.15", CruiseInstant(time: 0.15, message: "Hold my coffee...")),
+            ("t1.55", CruiseInstant(time: 1.55, message: longest)),
+        ]
+
+        // The numbers behind the pictures, so the report can cite them rather
+        // than claim them.
+        let sceneSize = CGSize(
+            width: PanelMetrics.width - 2 * PanelMetrics.padding,
+            height: PanelMetrics.cruiseSceneHeight
+        )
+        for (name, instant) in instants {
+            let frame = CruiseRocketGeometry.frame(at: instant.time)
+            let flame = CruiseRocketGeometry.flameLength(atFrame: frame)
+            let star = CruiseStarField.star(0, at: instant.time, in: sceneSize)
+            log("anim-probe", String(
+                format: "%@: frame %d, flame %.0f units, star 0 at x=%.1f y=%.1f r=%.1f",
+                name, frame, flame, star.position.x, star.position.y, star.radius
+            ))
+        }
+
+        var failures = 0
+        let width = PanelMetrics.width - 2 * PanelMetrics.padding
+
+        for (name, instant) in instants {
+            for isDark in [false, true] {
+                let file = "sending-\(name)-\(isDark ? "dark" : "light").png"
+                let stage = SendingStageView(
+                    attempt: 1,
+                    maxAttempts: UploadPlan.maxAttempts,
+                    reduceMotion: false,
+                    frozen: instant
+                )
+                .frame(width: width)
+
+                if write(stage, to: base.appendingPathComponent(file), isDark: isDark) {
+                    log("anim-probe", "wrote \(file) — “\(instant.message)”")
+                } else {
+                    log("anim-probe", "FAILED to render \(file)")
+                    failures += 1
+                }
+            }
+        }
+
+        // Reduce Motion goes through the real branch — no frozen instant — so
+        // what is rendered is what the setting actually produces: the clock
+        // stopped at `cruiseStillInstant`, and a joke drawn live from the pool.
+        for isDark in [false, true] {
+            let file = "sending-reduced-motion-\(isDark ? "dark" : "light").png"
+            let stage = SendingStageView(
+                attempt: 2,
+                maxAttempts: UploadPlan.maxAttempts,
+                reduceMotion: true,
+                frozen: nil
+            )
+            .frame(width: width)
+
+            if write(stage, to: base.appendingPathComponent(file), isDark: isDark) {
+                log("anim-probe", "wrote \(file) — real Reduce Motion branch, joke picked live")
+            } else {
+                log("anim-probe", "FAILED to render \(file)")
+                failures += 1
+            }
+        }
+
+        log("anim-probe", failures == 0 ? "PASS — \(base.path)" : "FAIL (\(failures) render(s))")
         return failures == 0 ? 0 : 1
     }
 

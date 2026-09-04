@@ -25,8 +25,8 @@ struct RecordingStageView: View {
 
             LevelBarsView(level: level, peak: peak, reduceMotion: reduceMotion)
                 .foregroundStyle(.tint)
-                // Squashing down into the launch pad is how the meter hands over
-                // to the rocket when the phase changes.
+                // Squashing down to nothing is how the meter gets out of the
+                // rocket's way when the phase changes.
                 .transition(.scale(scale: 0.12, anchor: .bottom).combined(with: .opacity))
 
             HStack(spacing: 8) {
