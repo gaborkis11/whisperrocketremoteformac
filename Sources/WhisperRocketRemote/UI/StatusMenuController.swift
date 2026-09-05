@@ -79,20 +79,30 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             )
             resend.target = self
             resend.representedObject = last.id
+            resend.image = Self.symbol("arrow.clockwise")
             menu.addItem(resend)
         }
 
         menu.addItem(.separator())
-        menu.addItem(item(title: L.actionSettings, action: #selector(openSettings)))
-        menu.addItem(item(title: L.menuAbout, action: #selector(openAbout)))
+        menu.addItem(item(title: L.actionSettings, action: #selector(openSettings), symbol: "gearshape"))
+        menu.addItem(item(title: L.menuAbout, action: #selector(openAbout), symbol: "info.circle"))
         menu.addItem(.separator())
         menu.addItem(item(title: L.actionQuit, action: #selector(quit)))
     }
 
-    private func item(title: String, action: Selector) -> NSMenuItem {
+    // Explicit images on every actionable item except Quit: macOS 26 decorates
+    // menu items it recognises by title (Settings grew a gear on its own), and a
+    // row where one item has an icon and its siblings have none reads as broken.
+    // Setting our own keeps the set consistent whatever the system guesses.
+    private func item(title: String, action: Selector, symbol: String? = nil) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
+        if let symbol { item.image = Self.symbol(symbol) }
         return item
+    }
+
+    private static func symbol(_ name: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil)
     }
 
     /// "Last record: 0:42 — Sent ✓", or the empty-ring line.

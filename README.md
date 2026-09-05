@@ -2,6 +2,10 @@
 
 **Dictate from your Mac through your WhisperRocket host — silent, fast, private.**
 
+<p align="center">
+  <img src="assets/hero.png" width="720" alt="WhisperRocket Remote capsule HUD while recording">
+</p>
+
 WhisperRocket Remote is a thin macOS menu bar client for [WhisperRocket](https://github.com/gaborkis11/WhisperRocket), the local speech-to-text desktop application. The Mac does **no speech recognition of its own**: it records your voice, sends the audio to the WhisperRocket host on your own machine over [Tailscale](https://tailscale.com), and puts the finished text on your clipboard a few seconds later — with the same model, the same personal dictionary and the same AI cleanup you use at the desk. Nothing ever leaves your own machines.
 
 ## How it works
