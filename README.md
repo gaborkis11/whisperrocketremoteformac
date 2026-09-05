@@ -2,6 +2,8 @@
 
 **Dictate from your Mac through your WhisperRocket host — silent, fast, private.**
 
+🌐 **[whisperrocket.app](https://whisperrocket.app/)**
+
 <p align="center">
   <img src="assets/hero.png" width="720" alt="WhisperRocket Remote capsule HUD while recording">
 </p>
@@ -44,6 +46,7 @@ Run `swift test` for the unit suite. The app ships with a set of self-verificati
 
 ## Related
 
+- **[whisperrocket.app](https://whisperrocket.app/)** — the official website
 - **[WhisperRocket](https://github.com/gaborkis11/WhisperRocket)** — the desktop application this client talks to: real-time local transcription with Whisper, GPU acceleration, AI cleanup, file transcription and more. Currently Linux-first.
 
 ## Roadmap
