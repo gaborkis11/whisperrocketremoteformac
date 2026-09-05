@@ -15,7 +15,8 @@ import Foundation
 /// on Foundation alone.
 public enum PanelPlacement {
     /// The gap between the bottom of the status item and the top of the window.
-    public static let gap: Double = 6
+    /// 16 rather than a snug 6: Gábor wants visible air under the menu bar.
+    public static let gap: Double = 16
     /// How close to the screen's edge the window may be pushed.
     public static let screenInset: Double = 8
     /// The corner an anchorless window falls back to.
