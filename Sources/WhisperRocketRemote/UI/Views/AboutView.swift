@@ -116,15 +116,16 @@ struct AboutView: View {
 
     // MARK: - The version
 
-    /// "Version 0.2.0 (2)", straight out of `Info.plist`. Outside a bundle
-    /// there is no plist at all, and saying so is more honest than inventing a
-    /// number.
+    /// "v260905 (4)", straight out of `Info.plist` — the plist stores the
+    /// date-shaped version (260905, or 260905.2 for a same-day follow-up) and
+    /// the About line wears the release tag's `v`. Outside a bundle there is
+    /// no plist at all, and saying so is more honest than inventing a number.
     static var versionLine: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
         switch (short, build) {
-        case (let short?, let build?): return "Version \(short) (\(build))"
-        case (let short?, nil): return "Version \(short)"
+        case (let short?, let build?): return "v\(short) (\(build))"
+        case (let short?, nil): return "v\(short)"
         default: return "Version dev"
         }
     }

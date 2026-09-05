@@ -10,8 +10,9 @@ APP="$PROJECT_ROOT/dist/$APP_NAME"
 [ -d "$APP" ] || "$PROJECT_ROOT/scripts/build-app.sh"
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-# The release tag is date-shaped (2026-09-05); the plist stores it dot-separated.
-TAG="${VERSION//./-}"
+# The plist stores the date-shaped version (260905, or 260905.2 for a same-day
+# follow-up); the release tag and the DMG carry it with a `v` prefix.
+TAG="v$VERSION"
 DMG="$PROJECT_ROOT/dist/WhisperRocket-Remote-$TAG.dmg"
 
 STAGING="$(mktemp -d)"

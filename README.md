@@ -41,7 +41,7 @@ Download the DMG from the [latest release](https://github.com/gaborkis11/whisper
 - Grant **microphone** access when prompted; enabling auto-typing in Settings prompts for **Accessibility**.
 - In **Settings**, enter the host address (your WhisperRocket machine's Tailscale IP and port, default `8771`) and the access key shown on the host's Phone tab.
 
-Releases are versioned by date (`2026-09-05`); a same-day follow-up gets a `.1` suffix.
+Releases are versioned by date (`v260905`); a same-day follow-up gets a numeric suffix (`v260905.2`).
 
 ## Build from source
 
