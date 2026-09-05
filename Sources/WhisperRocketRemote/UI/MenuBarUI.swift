@@ -43,6 +43,13 @@ final class MenuBarUI {
     /// Armed only while the microphone is open — see ``EscapeCancelMonitor``.
     private let escapeMonitor = EscapeCancelMonitor()
 
+    /// The green "it landed" flash. It is a moment, not a phase: the model can
+    /// sit in `.done` until the next dictation, and a permanently green rocket
+    /// would mean nothing. Any new phase cancels it — the newer thing to say
+    /// always wins.
+    private var doneFlashTask: Task<Void, Never>?
+    private var isFlashingDone = false
+
     /// Re-armed after every notification: `withObservationTracking` fires once.
     private var observationTask: Task<Void, Never>?
     private var lastPhase: DictationPhase
@@ -197,18 +204,15 @@ final class MenuBarUI {
             applyPhase(phase, force: false)
             lastPhase = phase
         } else {
-            statusItem.update(
-                style: phase.wantsFilledStatusIcon ? .filled : .outline,
-                showsBadge: panelModel.hasFailedRecordings
-            )
+            // The badge changed under an unchanged phase — repaint, but do not
+            // walk over a flash that is still running.
+            refreshStatusItem()
         }
     }
 
     private func applyPhase(_ phase: DictationPhase, force: Bool) {
-        statusItem.update(
-            style: phase.wantsFilledStatusIcon ? .filled : .outline,
-            showsBadge: panelModel.hasFailedRecordings
-        )
+        startDoneFlashIfNeeded(for: phase)
+        refreshStatusItem()
 
         // Before the `force` guard, so the invariant holds from the first
         // moment: Escape is registered *if and only if* a recording is running.
@@ -223,6 +227,32 @@ final class MenuBarUI {
         guard !force else { return }
 
         applyCapsuleStage(for: phase)
+    }
+
+    // MARK: - The status item
+
+    private func refreshStatusItem() {
+        let phase = panelModel.phase
+        let style = phase.statusItemStyle
+        statusItem.update(
+            // The flash has burned out but the model is still in `.done`: the
+            // icon goes quiet while the phase stays where it is.
+            style: style == .done && !isFlashingDone ? .idle : style,
+            showsBadge: panelModel.hasFailedRecordings
+        )
+    }
+
+    private func startDoneFlashIfNeeded(for phase: DictationPhase) {
+        doneFlashTask?.cancel()
+        isFlashingDone = phase.statusItemStyle == .done
+        guard isFlashingDone else { return }
+
+        doneFlashTask = Task { [weak self] in
+            try? await Task.sleep(for: StatusItemIcon.doneFlash)
+            guard let self, !Task.isCancelled else { return }
+            isFlashingDone = false
+            refreshStatusItem()
+        }
     }
 
     // MARK: - The capsule

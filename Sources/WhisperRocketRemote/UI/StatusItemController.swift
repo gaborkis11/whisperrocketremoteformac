@@ -3,18 +3,18 @@ import AppKit
 /// The menu-bar item: one rocket, four states, one menu.
 ///
 /// The image is rebuilt whenever the state *or the menu bar's appearance*
-/// changes. The appearance part matters because the badged image cannot be a
-/// template — a template image has no colours, and the badge is the whole point
-/// — so its rocket has to be painted in the menu bar's own ink, and the menu
-/// bar can go dark without the app doing so (a dark wallpaper is enough).
+/// changes. The appearance part matters because everything except the idle
+/// glyph carries its own colours, and a coloured image cannot be a template —
+/// so its rocket is painted for the menu bar it will hang in, and the menu bar
+/// can go dark without the app doing so (a dark wallpaper is enough).
 /// `effectiveAppearance` on the status button is the only thing that knows.
 @MainActor
 final class StatusItemController {
     private let statusItem: NSStatusItem
     private var appearanceObservation: NSKeyValueObservation?
 
-    /// Filled while the microphone is open or an upload is in flight.
-    private(set) var style: StatusItemIcon.Style = .outline
+    /// What the rocket is saying: idle, recording, sending, or the done flash.
+    private(set) var style: StatusItemIcon.Style = .idle
     /// The red dot: at least one recording failed and is waiting for the user.
     private(set) var showsBadge = false
 
@@ -37,9 +37,9 @@ final class StatusItemController {
         if let button = statusItem.button {
             appearanceObservation = button.observe(\.effectiveAppearance) { [weak self] _, _ in
                 MainActor.assumeIsolated {
-                    // Only the badged composite depends on the appearance; the
-                    // template flavour is tinted by AppKit itself.
-                    guard let self, self.showsBadge else { return }
+                    // Only the images that carry their own colours depend on the
+                    // appearance; the idle template is tinted by AppKit itself.
+                    guard let self, self.showsBadge || !self.style.isMonochrome else { return }
                     self.refreshImage()
                 }
             }
@@ -62,6 +62,8 @@ final class StatusItemController {
             badged: showsBadge,
             appearance: button.effectiveAppearance
         )
-        button.toolTip = showsBadge ? L.statusItemAccessibilityFailed : L.statusItemAccessibility
+        button.toolTip = showsBadge
+            ? L.statusItemAccessibilityFailed
+            : StatusItemIcon.accessibilityDescription(for: style)
     }
 }

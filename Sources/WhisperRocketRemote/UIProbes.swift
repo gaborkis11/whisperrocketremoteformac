@@ -26,8 +26,10 @@ import WRCore
 ///   backdrops test is how it sits on top of what the user is actually looking
 ///   at.
 /// * `--icon-probe [directory]` renders the menu-bar rocket to PNG contact
-///   sheets — idle, recording and badged, on a light and on a dark menu bar, at
-///   1× through 8× — because an 18-point glyph cannot be judged any other way.
+///   sheets — idle, recording, sending, done and the failed badge, on a light
+///   and on a dark menu bar, at 1× through 8× — because an 18-point glyph cannot
+///   be judged any other way, and a state colour cannot be judged on one
+///   background.
 /// * `--l10n-probe` proves the `.lproj` bundles survived SwiftPM's `.process`
 ///   flattening and that both languages resolve every key.
 /// * `--escape-probe` asks macOS whether the bare Escape key can be registered
@@ -318,20 +320,26 @@ enum UIProbes {
                 return 1
             }
         }
-        log("icon-probe", "rows: idle (template), recording (template, filled), failed (badged composite)")
+        log("icon-probe", "rows: idle (template), recording (red), sending (amber), done (green), failed (badged)")
         log("icon-probe", "columns: 1×, 2×, 4×, 8× — 1× is what the menu bar actually shows")
         return 0
     }
 
-    /// One sheet: three icon states down, four magnifications across.
+    /// One sheet: every icon state down, four magnifications across.
+    ///
+    /// The colours have to be judged on both sheets, not one: a bright amber is
+    /// perfectly legible on a dark menu bar and nearly invisible on a light one,
+    /// which is why ``StatusItemIcon`` resolves its ink per appearance.
     private static func contactSheet(isDark: Bool, background: NSColor) -> Data? {
         let appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
         let tint = isDark ? NSColor.white : NSColor.black
         let scales = [1, 2, 4, 8]
         let variants: [(label: String, image: NSImage, isTemplate: Bool)] = [
-            ("idle", StatusItemIcon.templateImage(style: .outline), true),
-            ("recording", StatusItemIcon.templateImage(style: .filled), true),
-            ("badged", StatusItemIcon.badgedImage(style: .outline, appearance: appearance), false),
+            ("idle", StatusItemIcon.templateImage(), true),
+            ("recording", StatusItemIcon.colouredImage(style: .recording, appearance: appearance), false),
+            ("sending", StatusItemIcon.colouredImage(style: .sending, appearance: appearance), false),
+            ("done", StatusItemIcon.colouredImage(style: .done, appearance: appearance), false),
+            ("failed", StatusItemIcon.badgedImage(style: .idle, appearance: appearance), false),
         ]
 
         let cell = 8 + 18 * 8 + 8

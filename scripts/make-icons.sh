@@ -1,40 +1,44 @@
 #!/bin/bash
-# Builds AssetsSource/AppIcon.icns from the 1024×1024 WhisperRocket artwork.
+# Builds AssetsSource/AppIcon.icns from scripts/make-appicon.swift.
+#
+# The icon is drawn, not photographed: make-appicon.swift renders each size from
+# the same vector description, so the 16-pixel icon is composed for 16 pixels
+# instead of being a 1024 master crushed by sips. That is also why the old
+# whisperrocket_ico.png path is gone — there is no master bitmap any more.
 #
 # No asset catalog anywhere in this project (the CLT-only build path has no
-# actool), so the app icon is made the old way: sips down to the ten sizes an
-# .iconset needs, then iconutil. Committing the .icns rather than generating it
-# at build time keeps build-app.sh free of image tooling — run this only when
-# the artwork changes.
+# actool), so the result is an .icns, made with iconutil and committed.
+# build-app.sh only copies it — run this when the artwork changes.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCE="${1:-$ROOT/AssetsSource/whisperrocket_ico.png}"
-ICONSET="$(mktemp -d)/AppIcon.iconset"
+DRAWING="$ROOT/scripts/make-appicon.swift"
+WORK="$(mktemp -d)"
+ICONSET="$WORK/AppIcon.iconset"
 OUTPUT="$ROOT/AssetsSource/AppIcon.icns"
+# Optional: keep the rendered PNGs somewhere for a look (make-icons.sh <dir>).
+KEEP="${1:-}"
 
-if [ ! -f "$SOURCE" ]; then
-	echo "!! no source artwork at $SOURCE" >&2
+cleanup() { rm -rf "$WORK"; }
+trap cleanup EXIT
+
+if [ ! -f "$DRAWING" ]; then
+	echo "!! no drawing at $DRAWING" >&2
 	exit 1
 fi
 
-# macOS wants each size at 1× and 2×; the 2× of one size is the 1× pixel count
-# of the next, but both names have to exist or iconutil rejects the set.
-SIZES=(16 32 128 256 512)
-
-echo "==> source: $SOURCE"
-sips -g pixelWidth -g pixelHeight "$SOURCE" | tail -n 2
-
-mkdir -p "$ICONSET"
-for size in "${SIZES[@]}"; do
-	retina=$((size * 2))
-	sips -z "$size" "$size" "$SOURCE" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-	sips -z "$retina" "$retina" "$SOURCE" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
-done
+echo "==> rendering $DRAWING"
+swift "$DRAWING" "$ICONSET"
 
 echo "==> $(ls "$ICONSET" | wc -l | tr -d ' ') images in the iconset"
+mkdir -p "$(dirname "$OUTPUT")"
 iconutil --convert icns --output "$OUTPUT" "$ICONSET"
-rm -rf "$(dirname "$ICONSET")"
+
+if [ -n "$KEEP" ]; then
+	mkdir -p "$KEEP"
+	cp "$ICONSET"/*.png "$KEEP/"
+	echo "==> kept the rendered PNGs in $KEEP"
+fi
 
 echo "==> wrote $OUTPUT ($(stat -f%z "$OUTPUT") bytes)"
 # Proof it is a real icns and not just a renamed PNG.

@@ -14,8 +14,19 @@ nonisolated enum DictationPhase: String, Equatable, Sendable, CaseIterable {
     case done
     case failed
 
-    /// Whether the menu-bar rocket is drawn filled rather than as an outline.
-    var wantsFilledStatusIcon: Bool {
-        self == .recording || self == .sending
+    /// How the menu-bar rocket is painted in this phase — the Linux tray's
+    /// language: red records, amber sends, green means it landed.
+    ///
+    /// `.done` is the odd one: it is a flash, not a state, so ``MenuBarUI``
+    /// drops back to `.idle` after ``StatusItemIcon/doneFlash``. `.failed` stays
+    /// monochrome on purpose — the red badge is what says a recording is stuck,
+    /// and a red rocket under a red dot would say it twice.
+    var statusItemStyle: StatusItemIcon.Style {
+        switch self {
+        case .idle, .failed: .idle
+        case .recording: .recording
+        case .sending: .sending
+        case .done: .done
+        }
     }
 }
