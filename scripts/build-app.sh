@@ -11,9 +11,18 @@ CONTENTS="$APP/Contents"
 BUNDLE_ID="com.gaborkis.WhisperRocketRemote"
 
 # The TCC database keys permissions to (signing identity, bundle id). Signing with
-# the real Apple Development cert keeps the designated requirement stable across
+# a real Apple Development cert keeps the designated requirement stable across
 # rebuilds; ad-hoc (SIGN_IDENTITY=-) makes macOS re-prompt after every build.
-SIGN_IDENTITY="${SIGN_IDENTITY:-Apple Development: developer@example.com (TEAMID0000)}"
+# The identity is looked up from the keychain at build time so no personal data
+# lives in this script; export SIGN_IDENTITY to override.
+if [ -z "${SIGN_IDENTITY:-}" ]; then
+  SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+    | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)"
+fi
+if [ -z "${SIGN_IDENTITY:-}" ]; then
+  echo "warning: no Apple Development identity found — signing ad-hoc (TCC will re-prompt after each build)" >&2
+  SIGN_IDENTITY="-"
+fi
 
 # The CommandLineTools toolchain ships no libPreviewsMacros.dylib, so every
 # dependency that uses #Preview (KeyboardShortcuts does) fails to compile.
