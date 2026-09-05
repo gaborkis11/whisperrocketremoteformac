@@ -6,10 +6,6 @@
 	<string>en</string>
 	<key>CFBundleExecutable</key>
 	<string>WhisperRocketRemote</string>
-	<!-- Contents/Resources/AppIcon.icns, built by scripts/make-icons.sh and
-	     copied in by build-app.sh. No asset catalog: the CLT-only build path
-	     has no actool, so CFBundleIconFile (the pre-catalog key) is what
-	     names the icon. -->
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
@@ -21,23 +17,18 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.0</string>
+	<string>2026.09.05</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
-	<!-- The host speaks plain HTTP over Tailscale (100.64.0.0/10), which ATS
-	     does not count as "local networking" — without this every /dictate and
-	     /health request dies inside URLSession with an ATS policy error and
-	     never reaches the wire. Measured in F3: curl worked, the bundle did not.
-	     The user picks the host, so a domain exception cannot be pinned. -->
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	<key>LSUIElement</key>
-	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Gábor Kis</string>
 	<key>NSMicrophoneUsageDescription</key>

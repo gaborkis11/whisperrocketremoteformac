@@ -33,6 +33,16 @@ WhisperRocket Remote is a thin macOS menu bar client for [WhisperRocket](https:/
 - A running [WhisperRocket](https://github.com/gaborkis11/WhisperRocket) host with the phone/remote dictation endpoint enabled
 - [Tailscale](https://tailscale.com) on both machines, signed in to the same account
 
+## Install
+
+Download the DMG from the [latest release](https://github.com/gaborkis11/whisperrocketremoteformac/releases/latest), open it and drag **WhisperRocket Remote** to Applications.
+
+- **First launch**: right-click the app and choose **Open** — the build is signed with a development certificate but not notarized, so Gatekeeper asks once.
+- Grant **microphone** access when prompted; enabling auto-typing in Settings prompts for **Accessibility**.
+- In **Settings**, enter the host address (your WhisperRocket machine's Tailscale IP and port, default `8771`) and the access key shown on the host's Phone tab.
+
+Releases are versioned by date (`2026-09-05`); a same-day follow-up gets a `.1` suffix.
+
 ## Build from source
 
 No Xcode project — the app builds with the Swift Package Manager and a small assembly script:
